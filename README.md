@@ -41,7 +41,7 @@ The External Tracking System is designed to monitor and track external resources
 ### Setup Instructions
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Wise-Owl-Automation/external-tracking.git
+   git clone https://github.com/ThinkWithTheo/external-tracking.git
    cd external-tracking
    ```
 
