@@ -3,11 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { ProcessedTask } from '@/types/clickup';
 import TaskRow from './TaskRow';
-import { RefreshCw, AlertCircle, Clock, User, Calendar, MessageCircle, Flag } from 'lucide-react';
+import { TaskGrid } from './task/TaskCard';
+import { TaskSkeleton } from '@/components/ui/Skeleton';
+import { Button } from '@/components/ui/Button';
+import { RefreshCw, AlertCircle, Clock, User, Calendar, MessageCircle, Flag, Grid3X3, List } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TaskListProps {
   className?: string;
 }
+
+type ViewMode = 'cards' | 'table';
 
 const TaskList: React.FC<TaskListProps> = ({ className = '' }) => {
   const [tasks, setTasks] = useState<ProcessedTask[]>([]);
@@ -15,6 +21,7 @@ const TaskList: React.FC<TaskListProps> = ({ className = '' }) => {
   const [error, setError] = useState<string | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   const fetchTasks = async () => {
     try {
@@ -63,10 +70,34 @@ const TaskList: React.FC<TaskListProps> = ({ className = '' }) => {
 
   if (loading) {
     return (
-      <div className={`flex items-center justify-center py-12 ${className}`}>
-        <div className="flex items-center space-x-2 text-gray-600">
-          <RefreshCw className="w-5 h-5 animate-spin" />
-          <span>Loading tasks...</span>
+      <div className={cn("space-y-4", className)}>
+        {/* Header with skeleton */}
+        <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
+          <div className="flex items-center space-x-4">
+            <div className="h-6 w-16 bg-[var(--color-border-light)] rounded animate-shimmer" />
+            <div className="h-4 w-32 bg-[var(--color-border-light)] rounded animate-shimmer" />
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="h-8 w-20 bg-[var(--color-border-light)] rounded animate-shimmer" />
+            <div className="h-8 w-8 bg-[var(--color-border-light)] rounded animate-shimmer" />
+          </div>
+        </div>
+        
+        {/* Skeleton content */}
+        <div className="p-4">
+          {viewMode === 'cards' ? (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="h-48 bg-[var(--color-border-light)] rounded-lg animate-shimmer" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <TaskSkeleton key={index} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -91,13 +122,13 @@ const TaskList: React.FC<TaskListProps> = ({ className = '' }) => {
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}>
+    <div className={cn("bg-[var(--color-surface)] rounded-lg shadow-sm border border-[var(--color-border)]", className)}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+      <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface-hover)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h2 className="text-lg font-semibold text-gray-900">Tasks</h2>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Tasks</h2>
+            <div className="flex items-center space-x-2 text-sm text-[var(--color-text-secondary)]">
               <span>{tasks.length} tasks</span>
               <span>•</span>
               <span>{getTotalSubtasks()} subtasks</span>
@@ -105,87 +136,124 @@ const TaskList: React.FC<TaskListProps> = ({ className = '' }) => {
           </div>
           
           <div className="flex items-center space-x-2">
+            {/* View Toggle */}
+            <div className="flex items-center bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-1">
+              <Button
+                variant={viewMode === 'cards' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('cards')}
+                className="h-7 px-2"
+              >
+                <Grid3X3 className="h-3 w-3 mr-1" />
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'table' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('table')}
+                className="h-7 px-2"
+              >
+                <List className="h-3 w-3 mr-1" />
+                Table
+              </Button>
+            </div>
+
             {lastRefresh && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-[var(--color-text-muted)] hidden sm:inline">
                 Last updated: {lastRefresh.toLocaleTimeString()}
               </span>
             )}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleRefresh}
               disabled={loading}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded transition-colors"
+              className="h-8 w-8"
               title="Refresh tasks"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Column Headers */}
-      <div className="flex items-center py-2 px-4 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-700 uppercase tracking-wide">
-        <div className="w-6 mr-2"></div> {/* Expand/collapse column */}
-        
-        <div className="flex-1 min-w-0 pr-4">
-          <span>Name</span>
-        </div>
-        
-        <div className="w-20 text-center px-2">
-          <div className="flex items-center justify-center">
-            <Clock className="w-3 h-3 mr-1" />
-            <span>Time</span>
-          </div>
-        </div>
-        
-        <div className="w-32 text-center px-2">
-          <div className="flex items-center justify-center">
-            <User className="w-3 h-3 mr-1" />
-            <span>Developer</span>
-          </div>
-        </div>
-        
-        <div className="w-24 text-center px-2">
-          <span>Status</span>
-        </div>
-        
-        <div className="w-20 text-center px-2">
-          <div className="flex items-center justify-center">
-            <Calendar className="w-3 h-3 mr-1" />
-            <span>Due</span>
-          </div>
-        </div>
-        
-        <div className="w-20 text-center px-2">
-          <div className="flex items-center justify-center">
-            <Flag className="w-3 h-3 mr-1" />
-            <span>Priority</span>
-          </div>
-        </div>
-        
-        <div className="w-20 text-center px-2">
-          <div className="flex items-center justify-center">
-            <MessageCircle className="w-3 h-3 mr-1" />
-            <span>Comments</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Task Rows */}
-      <div className="divide-y divide-gray-100">
-        {tasks.length === 0 ? (
-          <div className="py-12 text-center text-gray-500">
-            <p>No open tasks found</p>
-            <p className="text-sm mt-1">All tasks may be closed or there might be no tasks in this list</p>
-          </div>
+      {/* Content Area */}
+      <div className="p-4">
+        {viewMode === 'cards' ? (
+          <TaskGrid
+            tasks={tasks}
+            expandedTasks={expandedTasks}
+            onToggleExpand={handleToggleExpand}
+          />
         ) : (
-          tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              isExpanded={expandedTasks.has(task.id)}
-              onToggleExpand={() => handleToggleExpand(task.id)}
-            />
-          ))
+          <div className="space-y-0">
+            {/* Table Column Headers */}
+            <div className="flex items-center py-2 px-4 bg-[var(--color-surface-hover)] border-b border-[var(--color-border)] text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide rounded-t-lg">
+              <div className="w-6 mr-2"></div> {/* Expand/collapse column */}
+              
+              <div className="flex-1 min-w-0 pr-4">
+                <span>Name</span>
+              </div>
+              
+              <div className="w-20 text-center px-2">
+                <div className="flex items-center justify-center">
+                  <Clock className="w-3 h-3 mr-1" />
+                  <span>Time</span>
+                </div>
+              </div>
+              
+              <div className="w-32 text-center px-2">
+                <div className="flex items-center justify-center">
+                  <User className="w-3 h-3 mr-1" />
+                  <span>Developer</span>
+                </div>
+              </div>
+              
+              <div className="w-24 text-center px-2">
+                <span>Status</span>
+              </div>
+              
+              <div className="w-20 text-center px-2">
+                <div className="flex items-center justify-center">
+                  <Calendar className="w-3 h-3 mr-1" />
+                  <span>Due</span>
+                </div>
+              </div>
+              
+              <div className="w-20 text-center px-2">
+                <div className="flex items-center justify-center">
+                  <Flag className="w-3 h-3 mr-1" />
+                  <span>Priority</span>
+                </div>
+              </div>
+              
+              <div className="w-20 text-center px-2">
+                <div className="flex items-center justify-center">
+                  <MessageCircle className="w-3 h-3 mr-1" />
+                  <span>Comments</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Table Rows */}
+            <div className="divide-y divide-[var(--color-border-light)] border border-[var(--color-border)] rounded-b-lg">
+              {tasks.length === 0 ? (
+                <div className="py-12 text-center text-[var(--color-text-muted)]">
+                  <p className="text-lg">No open tasks found</p>
+                  <p className="text-sm mt-1">All tasks may be closed or there might be no tasks in this list</p>
+                </div>
+              ) : (
+                tasks.map((task) => (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    isExpanded={expandedTasks.has(task.id)}
+                    onToggleExpand={() => handleToggleExpand(task.id)}
+                  />
+                ))
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
