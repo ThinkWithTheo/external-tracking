@@ -1,0 +1,20 @@
+{
+  "name": "external-tracking-clickup",
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "env": {
+    "CLICKUP_API_TOKEN": "@clickup-api-token",
+    "CLICKUP_LIST_ID": "@clickup-list-id",
+    "CLICKUP_TEAM_ID": "@clickup-team-id"
+  },
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}

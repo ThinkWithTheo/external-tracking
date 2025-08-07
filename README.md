@@ -29,6 +29,7 @@ The External Tracking System is designed to monitor and track external resources
 - **Usage Analytics**: Track and analyze usage patterns of external resources
 - **Alert Management**: Proactive notifications for external service issues
 - **Historical Data**: Maintain historical records of external service performance
+- **ClickUp Task Tracking**: Real-time web interface for viewing ClickUp tasks and subtasks with status, assignments, and progress tracking
 
 ## Getting Started
 
@@ -122,6 +123,7 @@ The External Tracking System provides a centralized platform for monitoring and 
 - **Message Queue**: [To be determined - Redis/RabbitMQ]
 - **Monitoring**: [To be determined - Prometheus/Datadog]
 - **Deployment**: Docker containers on cloud infrastructure
+- **Web Interface**: Next.js with TypeScript and Tailwind CSS (ClickUp integration)
 
 ## Core Functionality
 
@@ -148,6 +150,47 @@ The External Tracking System provides a centralized platform for monitoring and 
 - Rate limit warnings
 - Cost threshold notifications
 - Performance degradation alerts
+
+## ClickUp Integration ✅ COMPLETED
+
+The [`/web-app`](web-app/) directory contains a **fully operational** Next.js application that provides a real-time web interface for viewing ClickUp tasks and subtasks. This integration is **live and working** with the RealSavvy project list.
+
+### 🎯 Features (All Implemented)
+- **✅ Task Overview**: Display tasks and subtasks in exact ClickUp-like interface
+- **✅ Real-time Data**: Live synchronization with ClickUp API (currently displaying 12 tasks, 57 subtasks)
+- **✅ Filtered Views**: Shows only open tasks, excludes closed items automatically
+- **✅ Comprehensive Info**: Task names, time estimates, developers, status, due dates, priorities, and comment counts
+- **✅ Hierarchical Display**: Subtasks appear under their parent tasks with expand/collapse functionality
+- **✅ Professional UI**: Clean, responsive design matching ClickUp's interface
+- **✅ Error Handling**: Graceful handling of API rate limits and connection issues
+
+### 🚀 Current Status
+- **LIVE**: Application running at http://localhost:3000
+- **CONNECTED**: Successfully integrated with ClickUp API
+- **DATA**: Displaying real tasks from RealSavvy list (ID: 901409484294)
+- **TESTED**: Fully functional with proper error handling
+
+### Quick Start
+```bash
+cd web-app
+npm install
+cp .env.local.example .env.local
+# Edit .env.local with your ClickUp API credentials
+npm run dev
+# Visit http://localhost:3000 to view your tasks
+```
+
+### 🔧 Technical Implementation
+- **Framework**: Next.js 15 with TypeScript and Tailwind CSS
+- **API Integration**: Complete ClickUp API v2 client with authentication
+- **Components**: Reusable TaskList and TaskRow components
+- **Type Safety**: Full TypeScript definitions for ClickUp data structures
+- **Performance**: Efficient data processing with graceful rate limit handling
+
+### Deployment
+The web app is **ready for production** and configured for easy deployment to Vercel with environment variable management for ClickUp API credentials.
+
+For detailed setup instructions, see [`/web-app/README.md`](web-app/README.md).
 
 ## Contributing
 

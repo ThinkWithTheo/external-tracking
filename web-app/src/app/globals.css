@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ClickUp-like styling enhancements */
+.bg-gray-25 {
+  background-color: #fafbfc;
+}
+
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Smooth transitions for interactive elements */
+.transition-colors {
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}
+
+/* Priority indicator pulse animation */
+@keyframes pulse-priority {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.priority-high {
+  animation: pulse-priority 2s infinite;
+}
+
+/* Status badge styling */
+.status-badge {
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+/* Task row hover effects */
+.task-row:hover {
+  background-color: #f8fafc;
+  transition: background-color 0.1s ease-in-out;
+}
+
+.task-row:hover .task-actions {
+  opacity: 1;
+}
+
+.task-actions {
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Focus styles for accessibility */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Responsive table adjustments */
+@media (max-width: 768px) {
+  .task-table {
+    font-size: 0.875rem;
+  }
+  
+  .task-table .w-32 {
+    width: 6rem;
+  }
+  
+  .task-table .w-20 {
+    width: 4rem;
+  }
+}
