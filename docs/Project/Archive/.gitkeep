@@ -1,0 +1,26 @@
+# Archive Directory
+
+This directory contains archived project documentation from completed initiatives, features, or significant development phases.
+
+## Purpose
+- Preserve historical project documentation
+- Reference past decisions and implementations
+- Maintain project knowledge for future reference
+
+## Organization
+Create subdirectories for each archived project or initiative:
+- `/project-name-YYYY-MM/` - Project documentation by date
+- `/feature-name/` - Feature development documentation
+- `/migration-YYYY-MM/` - System migration documentation
+
+## What to Archive
+- Completed project planning documents
+- Development process documentation
+- Decision records and meeting notes
+- Implementation guides that are no longer current
+- Working documents that have been finalized
+
+## Retention
+- Keep for historical reference
+- Review annually for relevance
+- Remove only when no longer needed for reference

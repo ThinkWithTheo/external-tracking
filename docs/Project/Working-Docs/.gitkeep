@@ -1,0 +1,14 @@
+# Working Docs Directory
+
+This directory is for temporary working documents that are generated during development but should not be committed to the repository.
+
+Files in this directory are ignored by Git (see .gitignore) but the directory structure is preserved with this .gitkeep file.
+
+## Usage
+- AI-generated temporary documents
+- Work-in-progress documentation
+- Brainstorming notes
+- Task completion summaries
+
+## Cleanup
+Remember to clean up this directory before major commits or when passing projects to other team members.
