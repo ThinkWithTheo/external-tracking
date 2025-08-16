@@ -17,6 +17,7 @@ interface TaskCardProps {
   onToggleExpand?: () => void;
   className?: string;
   style?: React.CSSProperties;
+  hideSubtasks?: boolean;
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({
@@ -24,7 +25,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
   isExpanded = false,
   onToggleExpand,
   className,
-  style
+  style,
+  hideSubtasks = false
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   
@@ -60,35 +62,40 @@ const TaskCard: React.FC<TaskCardProps> = ({
       whileTap={{ scale: 0.98 }}
       layout
       style={style}
-      className={className}
+      className={cn("h-full", className)}
     >
       <Card
         className={cn(
-          "transition-all duration-200 hover:shadow-lg cursor-pointer",
+          "transition-all duration-200 hover:shadow-lg h-full",
+          hasSubtasks && onToggleExpand && !task.isSubtask && "cursor-pointer",
           isOverdue && "border-l-4 border-l-[var(--color-error-500)]",
           task.priority?.name.toLowerCase() === 'urgent' && "border-l-4 border-l-[var(--color-error-500)] animate-pulse-priority"
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onClick={hasSubtasks && onToggleExpand && !task.isSubtask ? (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggleExpand();
+        } : task.isSubtask ? (e) => {
+          // Prevent subtask clicks from bubbling up to parent
+          e.preventDefault();
+          e.stopPropagation();
+        } : undefined}
       >
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-4 flex flex-col h-full">
         {/* Header Row */}
         <div className="flex items-start justify-between">
           <div className="flex items-start space-x-3 flex-1 min-w-0">
-            {/* Expand/Collapse Button */}
-            {hasSubtasks && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 mt-0.5 flex-shrink-0"
-                onClick={onToggleExpand}
-              >
+            {/* Expand/Collapse Indicator - Visual only, no button */}
+            {hasSubtasks && onToggleExpand && !task.isSubtask && (
+              <div className="h-6 w-6 mt-0.5 flex-shrink-0 flex items-center justify-center text-[var(--color-text-muted)]">
                 {isExpanded ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
                   <ChevronRight className="h-4 w-4" />
                 )}
-              </Button>
+              </div>
             )}
 
             {/* Priority Indicator & Task Name */}
@@ -176,8 +183,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
           )}
         </div>
 
-        {/* Developer & Progress Row */}
-        <div className="flex items-center justify-between">
+        {/* Developer & Progress Row - Push to bottom */}
+        <div className="flex items-center justify-between mt-auto">
           {/* Developer */}
           <div className="flex items-center space-x-2">
             {task.developer ? (
@@ -186,6 +193,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                   name={task.developer}
                   size="sm"
                   className="h-6 w-6"
+                  style={task.developerColor ? { backgroundColor: task.developerColor } : undefined}
                 />
                 <span className="text-sm text-[var(--color-text-secondary)]">
                   {task.developer}
@@ -216,9 +224,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
           )}
         </div>
 
-        {/* Subtasks */}
+        {/* Subtasks - only show if not hidden */}
         <AnimatePresence>
-          {hasSubtasks && isExpanded && (
+          {hasSubtasks && isExpanded && !hideSubtasks && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
@@ -242,21 +250,28 @@ const TaskCard: React.FC<TaskCardProps> = ({
                   visible: {
                     opacity: 1,
                     transition: {
-                      staggerChildren: 0.1,
-                      delayChildren: 0.2,
+                      staggerChildren: 0.05,
+                      delayChildren: 0.1,
                     },
                   },
                 }}
-                className="space-y-2"
+                className={cn(
+                  "grid gap-3",
+                  "grid-cols-1",
+                  "sm:grid-cols-2",
+                  "lg:grid-cols-3",
+                  "xl:grid-cols-4",
+                  "auto-rows-fr"
+                )}
               >
                 {task.subtasks.map((subtask, index) => (
                   <motion.div
                     key={subtask.id}
                     variants={{
-                      hidden: { opacity: 0, x: -20 },
+                      hidden: { opacity: 0, scale: 0.9 },
                       visible: {
                         opacity: 1,
-                        x: 0,
+                        scale: 1,
                         transition: {
                           duration: 0.3,
                           ease: "easeOut",
@@ -266,7 +281,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                   >
                     <TaskCard
                       task={subtask}
-                      className="bg-[var(--color-surface-hover)] border-[var(--color-border-light)] shadow-none hover:shadow-sm hover:translate-y-0"
+                      className="bg-[var(--color-surface)] border-[var(--color-border)] shadow-sm hover:shadow-md transition-shadow h-full"
                     />
                   </motion.div>
                 ))}
@@ -322,14 +337,7 @@ const TaskGrid: React.FC<TaskGridProps> = ({
           },
         },
       }}
-      className={cn(
-        "grid gap-4",
-        "grid-cols-1",
-        "md:grid-cols-2",
-        "xl:grid-cols-3",
-        "2xl:grid-cols-4",
-        className
-      )}
+      className={cn("space-y-6", className)}
     >
       {tasks.map((task, index) => (
         <motion.div
@@ -346,10 +354,13 @@ const TaskGrid: React.FC<TaskGridProps> = ({
             },
           }}
         >
+          {/* Parent Task - Full Width with Subtasks Inside */}
           <TaskCard
             task={task}
             isExpanded={expandedTasks.has(task.id)}
             onToggleExpand={() => onToggleExpand(task.id)}
+            className="w-full"
+            hideSubtasks={false}
           />
         </motion.div>
       ))}

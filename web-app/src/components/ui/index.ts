@@ -17,13 +17,14 @@ export {
   progressVariants, 
   type ProgressProps 
 } from './Progress';
-export { 
-  Skeleton, 
-  SkeletonText, 
-  SkeletonCard, 
-  SkeletonTable, 
+export {
+  Skeleton,
+  SkeletonText,
+  SkeletonCard,
+  SkeletonTable,
   SkeletonList,
   TaskSkeleton,
-  skeletonVariants, 
-  type SkeletonProps 
+  skeletonVariants,
+  type SkeletonProps
 } from './Skeleton';
+export { default as Modal } from './Modal';

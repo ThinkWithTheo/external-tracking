@@ -11,19 +11,31 @@ import { cn } from '@/lib/utils';
 
 interface TaskListProps {
   className?: string;
+  tasks?: ProcessedTask[];
+  activeFilters?: Record<string, string[]>;
 }
 
 type ViewMode = 'cards' | 'table';
 
-const TaskList: React.FC<TaskListProps> = ({ className = '' }) => {
-  const [tasks, setTasks] = useState<ProcessedTask[]>([]);
+const TaskList: React.FC<TaskListProps> = ({
+  className = '',
+  tasks: propTasks,
+  activeFilters
+}) => {
+  const [internalTasks, setInternalTasks] = useState<ProcessedTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
+  // Use prop tasks if provided, otherwise fetch internally
+  const tasks = propTasks || internalTasks;
+
   const fetchTasks = async () => {
+    // Only fetch if no tasks are provided via props
+    if (propTasks) return;
+    
     try {
       setLoading(true);
       setError(null);
@@ -35,7 +47,7 @@ const TaskList: React.FC<TaskListProps> = ({ className = '' }) => {
         throw new Error(data.error || 'Failed to fetch tasks');
       }
       
-      setTasks(data.tasks);
+      setInternalTasks(data.tasks);
       setLastRefresh(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -45,8 +57,12 @@ const TaskList: React.FC<TaskListProps> = ({ className = '' }) => {
   };
 
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    if (propTasks) {
+      setLoading(false);
+    } else {
+      fetchTasks();
+    }
+  }, [propTasks]);
 
   const handleToggleExpand = (taskId: string) => {
     setExpandedTasks(prev => {

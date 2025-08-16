@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "External Tracking - ClickUp Tasks",
-  description: "Real-time task tracking from ClickUp workspace",
+  title: "External Tracking - Task Management",
+  description: "Real-time task tracking and management system",
 };
 
 export default function RootLayout({

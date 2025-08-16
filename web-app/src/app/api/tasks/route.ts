@@ -3,6 +3,10 @@ import { clickupAPI } from '@/lib/clickup-api';
 
 export async function GET(request: NextRequest) {
   try {
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const includeComments = searchParams.get('includeComments') === 'true';
+
     // Test API connection first
     const isConnected = await clickupAPI.testConnection();
     if (!isConnected) {
@@ -12,11 +16,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log(`Processing tasks with comments: ${includeComments}`);
+
     // Fetch raw tasks from ClickUp
     const rawTasks = await clickupAPI.getTasks(true, false); // Include subtasks, exclude closed
 
-    // Process tasks for UI
-    const processedTasks = await clickupAPI.processTasksForUI(rawTasks);
+    // Process tasks for UI (comments disabled by default to reduce API calls)
+    const processedTasks = await clickupAPI.processTasksForUI(rawTasks, includeComments);
 
     return NextResponse.json({
       success: true,

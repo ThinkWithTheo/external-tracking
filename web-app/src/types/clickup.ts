@@ -147,6 +147,7 @@ export interface ProcessedTask {
   };
   timeEstimate?: number;
   developer?: string;
+  developerColor?: string;
   dueDate?: string;
   comments: ClickUpComment[];
   subtasks: ProcessedTask[];

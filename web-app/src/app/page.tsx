@@ -6,6 +6,7 @@ import TaskList from '@/components/TaskList';
 import Header from '@/components/layout/Header';
 import StatsBar from '@/components/layout/StatsBar';
 import FilterBar, { FilterGroup } from '@/components/layout/FilterBar';
+import CreateTaskModal from '@/components/task/CreateTaskModal';
 import { PageTransition, FadeIn, SlideIn } from '@/components/animations/PageTransition';
 import { ProcessedTask } from '@/types/clickup';
 
@@ -14,6 +15,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Fetch tasks function
   const fetchTasks = async () => {
@@ -85,6 +87,58 @@ export default function Home() {
     setActiveFilters({});
   };
 
+  const handleCreateTask = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleTaskCreated = () => {
+    // Refresh the task list after creating a new task
+    fetchTasks();
+  };
+
+  // Filter tasks based on active filters
+  const filteredTasks = tasks.filter(task => {
+    // Status filter
+    if (activeFilters.status && activeFilters.status.length > 0) {
+      const taskStatus = task.status.toLowerCase();
+      const matchesStatus = activeFilters.status.some(status => {
+        switch (status) {
+          case 'todo':
+            return taskStatus.includes('todo') || taskStatus.includes('to do');
+          case 'progress':
+            return taskStatus.includes('progress') || taskStatus.includes('in progress');
+          case 'review':
+            return taskStatus.includes('review');
+          case 'done':
+            return taskStatus.includes('done') || taskStatus.includes('complete');
+          default:
+            return taskStatus.includes(status);
+        }
+      });
+      if (!matchesStatus) return false;
+    }
+
+    // Priority filter
+    if (activeFilters.priority && activeFilters.priority.length > 0) {
+      if (!task.priority) return false;
+      const matchesPriority = activeFilters.priority.includes(task.priority.name.toLowerCase());
+      if (!matchesPriority) return false;
+    }
+
+    // Assignee filter (using developer field)
+    if (activeFilters.assignee && activeFilters.assignee.length > 0) {
+      if (!task.developer) return false;
+      const matchesAssignee = activeFilters.assignee.includes(task.developer);
+      if (!matchesAssignee) return false;
+    }
+
+    return true;
+  });
+
   return (
     <PageTransition className="min-h-screen bg-[var(--color-background)]">
       {/* Modern Header */}
@@ -92,6 +146,7 @@ export default function Home() {
         onRefresh={fetchTasks}
         isRefreshing={loading}
         lastRefresh={lastRefresh}
+        onCreateTask={handleCreateTask}
       />
 
       {/* Main Content */}
@@ -128,7 +183,11 @@ export default function Home() {
               transition: { duration: 0.2 }
             }}
           >
-            <TaskList className="w-full" />
+            <TaskList
+              className="w-full"
+              tasks={loading ? undefined : filteredTasks}
+              activeFilters={activeFilters}
+            />
           </motion.div>
         </SlideIn>
       </main>
@@ -139,15 +198,22 @@ export default function Home() {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-[var(--color-text-secondary)]">
-                External Tracking System - ClickUp Integration
+                External Tracking System - Task Management
               </div>
               <div className="text-sm text-[var(--color-text-secondary)]">
-                Data synced from ClickUp API
+                Real-time task synchronization
               </div>
             </div>
           </div>
         </footer>
       </FadeIn>
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        isOpen={isCreateModalOpen}
+        onClose={handleCloseCreateModal}
+        onTaskCreated={handleTaskCreated}
+      />
     </PageTransition>
   );
 }

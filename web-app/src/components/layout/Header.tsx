@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, Search, Filter, Settings, Bell } from 'lucide-react';
+import { RefreshCw, Search, Filter, Settings, Bell, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ interface HeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   lastRefresh?: Date | null;
+  onCreateTask?: () => void;
   className?: string;
 }
 
@@ -17,6 +18,7 @@ const Header: React.FC<HeaderProps> = ({
   onRefresh,
   isRefreshing = false,
   lastRefresh,
+  onCreateTask,
   className
 }) => {
   return (
@@ -40,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({
                   External Tracking
                 </h1>
                 <p className="text-xs text-[var(--color-text-secondary)] hidden sm:block">
-                  ClickUp Task Management
+                  Task Management System
                 </p>
               </div>
             </div>
@@ -66,6 +68,28 @@ const Header: React.FC<HeaderProps> = ({
                 <span>Updated: {lastRefresh.toLocaleTimeString()}</span>
               </div>
             )}
+
+            {/* Create New Review Item Button */}
+            <Button
+              variant="primary"
+              size="default"
+              onClick={onCreateTask}
+              className="hidden sm:flex"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              New Review Item
+            </Button>
+
+            {/* Mobile Create Review Item Button */}
+            <Button
+              variant="primary"
+              size="icon"
+              onClick={onCreateTask}
+              className="sm:hidden"
+              aria-label="Create new review item"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
 
             {/* Mobile Search Button */}
             <Button
