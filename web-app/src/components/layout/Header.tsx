@@ -10,7 +10,6 @@ interface HeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   lastRefresh?: Date | null;
-  onCreateTask?: () => void;
   className?: string;
 }
 
@@ -18,7 +17,6 @@ const Header: React.FC<HeaderProps> = ({
   onRefresh,
   isRefreshing = false,
   lastRefresh,
-  onCreateTask,
   className
 }) => {
   return (
@@ -62,35 +60,6 @@ const Header: React.FC<HeaderProps> = ({
 
           {/* Right Section - Actions */}
           <div className="flex items-center space-x-2">
-            {/* Last Refresh Indicator */}
-            {lastRefresh && (
-              <div className="hidden sm:flex items-center text-xs text-[var(--color-text-muted)] mr-2">
-                <span>Updated: {lastRefresh.toLocaleTimeString()}</span>
-              </div>
-            )}
-
-            {/* Create New Review Item Button */}
-            <Button
-              variant="primary"
-              size="default"
-              onClick={onCreateTask}
-              className="hidden sm:flex"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              New Review Item
-            </Button>
-
-            {/* Mobile Create Review Item Button */}
-            <Button
-              variant="primary"
-              size="icon"
-              onClick={onCreateTask}
-              className="sm:hidden"
-              aria-label="Create new review item"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-
             {/* Mobile Search Button */}
             <Button
               variant="ghost"
@@ -120,25 +89,13 @@ const Header: React.FC<HeaderProps> = ({
               <Bell className="h-4 w-4" />
               <Badge
                 variant="error"
-                className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs"
+                className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
               >
-                3
+                {(() => {
+                  const alertCount = 12; // This would come from your state/props
+                  return alertCount > 9 ? '!' : alertCount;
+                })()}
               </Badge>
-            </Button>
-
-            {/* Refresh Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              aria-label="Refresh tasks"
-              className="relative"
-            >
-              <RefreshCw className={cn(
-                "h-4 w-4 transition-transform",
-                isRefreshing && "animate-spin"
-              )} />
             </Button>
 
             {/* Settings */}

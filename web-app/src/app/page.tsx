@@ -146,7 +146,6 @@ export default function Home() {
         onRefresh={fetchTasks}
         isRefreshing={loading}
         lastRefresh={lastRefresh}
-        onCreateTask={handleCreateTask}
       />
 
       {/* Main Content */}
@@ -187,6 +186,7 @@ export default function Home() {
               className="w-full"
               tasks={loading ? undefined : filteredTasks}
               activeFilters={activeFilters}
+              onCreateTask={handleCreateTask}
             />
           </motion.div>
         </SlideIn>

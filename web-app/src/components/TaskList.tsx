@@ -6,13 +6,14 @@ import TaskRow from './TaskRow';
 import { TaskGrid } from './task/TaskCard';
 import { TaskSkeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
-import { RefreshCw, AlertCircle, Clock, User, Calendar, MessageCircle, Flag, Grid3X3, List } from 'lucide-react';
+import { RefreshCw, AlertCircle, Clock, User, Calendar, MessageCircle, Flag, Grid3X3, List, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TaskListProps {
   className?: string;
   tasks?: ProcessedTask[];
   activeFilters?: Record<string, string[]>;
+  onCreateTask?: () => void;
 }
 
 type ViewMode = 'cards' | 'table';
@@ -20,7 +21,8 @@ type ViewMode = 'cards' | 'table';
 const TaskList: React.FC<TaskListProps> = ({
   className = '',
   tasks: propTasks,
-  activeFilters
+  activeFilters,
+  onCreateTask
 }) => {
   const [internalTasks, setInternalTasks] = useState<ProcessedTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,11 +176,6 @@ const TaskList: React.FC<TaskListProps> = ({
               </Button>
             </div>
 
-            {lastRefresh && (
-              <span className="text-xs text-[var(--color-text-muted)] hidden sm:inline">
-                Last updated: {lastRefresh.toLocaleTimeString()}
-              </span>
-            )}
             <Button
               variant="ghost"
               size="icon"
@@ -189,6 +186,31 @@ const TaskList: React.FC<TaskListProps> = ({
             >
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
             </Button>
+
+            {/* New Review Item Button */}
+            {onCreateTask && (
+              <>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={onCreateTask}
+                  className="hidden sm:flex h-7 px-2"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  New Review Item
+                </Button>
+
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={onCreateTask}
+                  className="sm:hidden h-7 w-7"
+                  aria-label="Create new review item"
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
