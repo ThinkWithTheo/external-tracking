@@ -288,13 +288,21 @@ npm run dev
 ### Deployment
 
 #### Vercel Auto-Deployment ✅
-The web application is configured for **automatic deployment to Vercel** when changes are pushed to the `main` branch on GitHub. The deployment configuration is optimized for the subdirectory structure with the Next.js app located in `/web-app`.
+The web application is configured for **automatic deployment to Vercel** when changes are pushed to the `main` branch on GitHub. The deployment is configured for the subdirectory structure with the Next.js app located in `/web-app`.
+
+**Vercel Project Configuration Required:**
+To deploy the subdirectory properly, configure your Vercel project settings:
+1. Go to your Vercel project dashboard
+2. Navigate to Settings → General
+3. Set **Root Directory** to `web-app`
+4. Vercel will automatically detect the Next.js framework and configure build settings
 
 **Auto-Deploy Process:**
 - Push to `main` branch → Automatic Vercel deployment
-- Build command: `cd web-app && npm run build`
-- Install command: `cd web-app && npm install`
-- Output directory: `web-app/.next`
+- Root directory: `web-app` (configured in Vercel project settings)
+- Build command: `npm run build` (auto-detected)
+- Install command: `npm install` (auto-detected)
+- Output directory: `.next` (auto-detected)
 - API routes: Configured with 30-second timeout for ClickUp API calls
 
 #### Manual Deployment
@@ -303,7 +311,8 @@ For manual deployments or testing:
 # Install Vercel CLI
 npm i -g vercel
 
-# Deploy from project root
+# Deploy from web-app directory
+cd web-app
 vercel --prod
 ```
 
