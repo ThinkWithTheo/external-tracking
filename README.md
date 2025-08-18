@@ -286,6 +286,32 @@ npm run dev
 - **Accessibility**: WCAG compliant with proper ARIA labels and focus management
 
 ### Deployment
+
+#### Vercel Auto-Deployment ✅
+The web application is configured for **automatic deployment to Vercel** when changes are pushed to the `main` branch on GitHub. The deployment configuration is optimized for the subdirectory structure with the Next.js app located in `/web-app`.
+
+**Auto-Deploy Process:**
+- Push to `main` branch → Automatic Vercel deployment
+- Build command: `cd web-app && npm run build`
+- Install command: `cd web-app && npm install`
+- Output directory: `web-app/.next`
+- API routes: Configured with 30-second timeout for ClickUp API calls
+
+#### Manual Deployment
+For manual deployments or testing:
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy from project root
+vercel --prod
+```
+
+#### Environment Variables
+Set the following environment variables in your Vercel dashboard:
+- `CLICKUP_API_TOKEN`: Your ClickUp API token
+- `CLICKUP_TEAM_ID`: Your ClickUp team/workspace ID
+
 The enhanced web app is **production-ready** with optimized build configuration and environment variable management for ClickUp API credentials.
 
 For detailed setup instructions, see [`/web-app/README.md`](web-app/README.md).

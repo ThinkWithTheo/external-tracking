@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd web-app && npm run build",
+  "devCommand": "cd web-app && npm run dev",
+  "installCommand": "cd web-app && npm install",
+  "outputDirectory": "web-app/.next",
+  "functions": {
+    "web-app/src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}
