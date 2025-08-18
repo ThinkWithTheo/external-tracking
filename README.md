@@ -287,23 +287,27 @@ npm run dev
 
 ### Deployment
 
-#### Vercel Auto-Deployment ✅
-The web application is configured for **automatic deployment to Vercel** when changes are pushed to the `main` branch on GitHub. The deployment is configured for the subdirectory structure with the Next.js app located in `/web-app`.
+#### Vercel Auto-Deployment ✅ WORKING
+The web application is **successfully configured** for automatic deployment to Vercel when changes are pushed to the `main` branch on GitHub. The deployment handles the subdirectory structure with the Next.js app located in `/web-app`.
 
-**Vercel Project Configuration Required:**
-To deploy the subdirectory properly, configure your Vercel project settings:
-1. Go to your Vercel project dashboard
-2. Navigate to Settings → General
-3. Set **Root Directory** to `web-app`
-4. Vercel will automatically detect the Next.js framework and configure build settings
+**Working Configuration:**
+The deployment now works with the following setup:
+1. **Root Directory**: Set to `web-app` in Vercel project settings
+2. **Framework Detection**: Explicitly configured as Next.js in [`web-app/vercel.json`](web-app/vercel.json)
+3. **Build Configuration**: Optimized for subdirectory deployment
 
 **Auto-Deploy Process:**
-- Push to `main` branch → Automatic Vercel deployment
-- Root directory: `web-app` (configured in Vercel project settings)
-- Build command: `npm run build` (auto-detected)
-- Install command: `npm install` (auto-detected)
-- Output directory: `.next` (auto-detected)
-- API routes: Configured with 30-second timeout for ClickUp API calls
+- ✅ Push to `main` branch → Automatic Vercel deployment
+- ✅ Root directory: `web-app` (configured in Vercel project settings)
+- ✅ Framework: `nextjs` (explicitly specified in vercel.json)
+- ✅ Build command: `npm run build`
+- ✅ Install command: `npm install`
+- ✅ Output directory: `.next`
+- ✅ API routes: Configured with 30-second timeout for ClickUp API calls
+
+**Final Configuration Files:**
+- **[`web-app/vercel.json`](web-app/vercel.json)**: Contains framework specification and function timeouts
+- **Vercel Project Settings**: Root Directory set to `web-app`
 
 #### Manual Deployment
 For manual deployments or testing:
@@ -320,6 +324,13 @@ vercel --prod
 Set the following environment variables in your Vercel dashboard:
 - `CLICKUP_API_TOKEN`: Your ClickUp API token
 - `CLICKUP_TEAM_ID`: Your ClickUp team/workspace ID
+
+#### Troubleshooting Notes
+If you encounter deployment issues in the future:
+1. Ensure Root Directory is set to `web-app` in Vercel project settings
+2. Verify [`web-app/vercel.json`](web-app/vercel.json) contains `"framework": "nextjs"`
+3. Check that all environment variables are properly configured
+4. The routes-manifest.json error was resolved by explicit framework configuration
 
 The enhanced web app is **production-ready** with optimized build configuration and environment variable management for ClickUp API credentials.
 
