@@ -261,6 +261,8 @@ export interface TaskCreateData {
     id: string;
     value: unknown;
   }>;
+  parent?: string;
+  developer?: string;
 }
 
 export interface ApiError {

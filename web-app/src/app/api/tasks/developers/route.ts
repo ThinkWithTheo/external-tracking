@@ -12,7 +12,7 @@ export async function GET() {
     if (developerField && developerField.type === 'drop_down') {
       // Extract options from the dropdown field
       const options = developerField.type_config?.options || [];
-      const developers = options.map((option: any) => ({
+      const developers = options.map((option) => ({
         id: option.orderindex || option.id,
         name: option.name,
         color: option.color
@@ -30,12 +30,13 @@ export async function GET() {
       developers: []
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const apiError = error as { message?: string };
     console.error('Error fetching developers:', error);
     
     return NextResponse.json(
       { 
-        error: error.message || 'Failed to fetch developers',
+        error: apiError.message || 'Failed to fetch developers',
         developers: []
       },
       { status: 500 }

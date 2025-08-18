@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clickupAPI } from '@/lib/clickup-api';
+import { ClickUpCustomField, ClickUpTask, TaskCreateData } from '@/types/clickup';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,13 +24,13 @@ export async function POST(request: NextRequest) {
     const reviewTask = await findOrCreateReviewTask(customFields, developerField);
 
     // Step 3: Handle developer custom field mapping for the new task
-    let taskData = { ...body };
+    const taskData: TaskCreateData = { ...body };
     
     if (body.developer && developerField) {
       if (developerField.type === 'drop_down') {
         // For dropdown fields, we need to find the option that matches the developer name
         const options = developerField.type_config?.options || [];
-        const matchingOption = options.find((option: any) =>
+        const matchingOption = options.find((option) =>
           option.name.toLowerCase() === body.developer.toLowerCase()
         );
         
@@ -68,37 +69,38 @@ export async function POST(request: NextRequest) {
       message: 'Subtask created successfully under Review'
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const apiError = error as { message?: string; response?: { status?: number; data?: unknown } };
     console.error('Error in create task API:', error);
     
     // Better error handling for different scenarios
     let errorMessage = 'Failed to create task';
     let statusCode = 500;
     
-    if (error.message?.includes('timeout')) {
+    if (apiError.message?.includes('timeout')) {
       errorMessage = 'Request timed out. ClickUp may be experiencing delays. Please try again.';
       statusCode = 408;
-    } else if (error.message?.includes('rate limit')) {
+    } else if (apiError.message?.includes('rate limit')) {
       errorMessage = 'Too many requests. Please wait a moment and try again.';
       statusCode = 429;
-    } else if (error.message?.includes('service is temporarily unavailable')) {
+    } else if (apiError.message?.includes('service is temporarily unavailable')) {
       errorMessage = 'ClickUp service is temporarily unavailable. Please try again later.';
       statusCode = 503;
-    } else if (error.message) {
-      errorMessage = error.message;
+    } else if (apiError.message) {
+      errorMessage = apiError.message;
     }
     
     return NextResponse.json(
       {
         error: errorMessage,
-        details: error.response?.data || null
+        details: apiError.response?.data || null
       },
-      { status: error.response?.status || statusCode }
+      { status: apiError.response?.status || statusCode }
     );
   }
 }
 
-async function findOrCreateReviewTask(customFields?: any[], developerField?: any) {
+async function findOrCreateReviewTask(customFields?: ClickUpCustomField[], developerField?: ClickUpCustomField): Promise<ClickUpTask> {
   try {
     // Get all tasks to find existing "Review" task
     const allTasks = await clickupAPI.getTasks(true, false);
@@ -127,7 +129,7 @@ async function findOrCreateReviewTask(customFields?: any[], developerField?: any
       );
     }
 
-    let reviewTaskData: any = {
+    const reviewTaskData: TaskCreateData = {
       name: 'Review',
       description: 'Parent task for all review items',
       status: 'IN PROGRESS'
@@ -136,7 +138,7 @@ async function findOrCreateReviewTask(customFields?: any[], developerField?: any
     // Set developer to "Young" if developer field exists
     if (devField && devField.type === 'drop_down') {
       const options = devField.type_config?.options || [];
-      const youngOption = options.find((option: any) =>
+      const youngOption = options.find((option) =>
         option.name.toLowerCase().includes('young')
       );
       
@@ -158,15 +160,16 @@ async function findOrCreateReviewTask(customFields?: any[], developerField?: any
     
     return newReviewTask;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const apiError = error as { message?: string; response?: { status?: number } };
     console.error('Error finding/creating Review task:', error);
     
     // Better error handling for timeout scenarios
-    if (error.message?.includes('timeout')) {
+    if (apiError.message?.includes('timeout')) {
       throw new Error('ClickUp API timeout while creating Review parent task. Please try again in a moment.');
-    } else if (error.response?.status === 429) {
+    } else if (apiError.response?.status === 429) {
       throw new Error('ClickUp API rate limit exceeded. Please wait a moment and try again.');
-    } else if (error.response?.status >= 500) {
+    } else if (apiError.response?.status && apiError.response.status >= 500) {
       throw new Error('ClickUp service is temporarily unavailable. Please try again later.');
     }
     

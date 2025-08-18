@@ -41,10 +41,10 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   });
 
   const [loading, setLoading] = useState(false);
-  const [statuses, setStatuses] = useState<any[]>([]);
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [customFields, setCustomFields] = useState<any[]>([]);
-  const [developerOptions, setDeveloperOptions] = useState<any[]>([]);
+  const [statuses, setStatuses] = useState<Array<{ id: string; status: string; color: string }>>([]);
+  const [teamMembers, setTeamMembers] = useState<Array<{ id: number; username: string }>>([]);
+  const [customFields, setCustomFields] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [developerOptions, setDeveloperOptions] = useState<Array<{ id: string | number; name: string; color?: string }>>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Priority options
@@ -81,7 +81,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         { id: '6', status: 'CLOSED' }
       ];
 
-      setStatuses(defaultStatuses);
+      setStatuses(defaultStatuses.map(status => ({ ...status, color: '#64748b' })));
       
       // Set default status
       if (defaultStatuses.length > 0) {
@@ -171,9 +171,11 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       // Notify parent component
       onTaskCreated();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as { message?: string };
       console.error('Error creating subtask:', error);
-      setErrors({ submit: error.message || 'Failed to create subtask' });
+      const submitError = error as { message?: string };
+      setErrors({ submit: submitError.message || 'Failed to create subtask' });
     } finally {
       setLoading(false);
     }

@@ -93,7 +93,7 @@ function StatusBadge({ status, color, className, ...props }: StatusBadgeProps) {
   
   return (
     <Badge
-      variant={variant as any}
+      variant={variant}
       className={cn("uppercase tracking-wide font-medium", className)}
       style={color ? { backgroundColor: color } : undefined}
       {...props}
@@ -133,7 +133,7 @@ function PriorityBadge({ priority, color, className, ...props }: PriorityBadgePr
   
   return (
     <Badge
-      variant={variant as any}
+      variant={variant}
       className={cn("capitalize", className)}
       style={color ? { backgroundColor: color } : undefined}
       {...props}

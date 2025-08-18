@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { clickupAPI } from '@/lib/clickup-api';
+import { ClickUpList, ClickUpFolder } from '@/types/clickup';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Test API connection first
     const isConnected = await clickupAPI.testConnection();
@@ -16,14 +17,14 @@ export async function GET(request: NextRequest) {
     const spaces = await clickupAPI.getSpaces();
     
     // Get all lists from all spaces
-    const allLists: any[] = [];
-    const allFolders: any[] = [];
+    const allLists: (ClickUpList & { spaceName: string; spaceId: string; folderName: string; folderId: string | null })[] = [];
+    const allFolders: (ClickUpFolder & { spaceName: string; spaceId: string })[] = [];
     
     for (const space of spaces) {
       try {
         // Try to get folders first, then lists from folders
         const folders = await clickupAPI.getFoldersInSpace(space.id);
-        allFolders.push(...folders.map((folder: any) => ({
+        allFolders.push(...folders.map((folder) => ({
           ...folder,
           spaceName: space.name,
           spaceId: space.id
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
         for (const folder of folders) {
           try {
             const folderLists = await clickupAPI.getListsInFolder(folder.id);
-            allLists.push(...folderLists.map((list: any) => ({
+            allLists.push(...folderLists.map((list) => ({
               ...list,
               spaceName: space.name,
               spaceId: space.id,
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
         
         // Also try to get lists directly from space (folderless lists)
         const spaceLists = await clickupAPI.getListsInSpace(space.id);
-        allLists.push(...spaceLists.map((list: any) => ({
+        allLists.push(...spaceLists.map((list) => ({
           ...list,
           spaceName: space.name,
           spaceId: space.id,
