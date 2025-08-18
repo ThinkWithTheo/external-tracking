@@ -202,7 +202,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             <span className="font-medium">Creating Review Item</span>
           </div>
           <p className="text-sm text-blue-700 mt-1">
-            This item will be created as a subtask under the "Review" parent task for organized tracking.
+            This item will be created as a subtask under the &quot;Review&quot; parent task for organized tracking.
           </p>
         </div>
 
