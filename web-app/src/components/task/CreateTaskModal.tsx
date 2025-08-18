@@ -6,6 +6,7 @@ import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
+import { TaskCreateData } from '@/types/clickup';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -126,7 +127,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
     try {
       // Prepare task data
-      const taskData: any = {
+      const taskData: TaskCreateData = {
         name: formData.name,
         description: formData.description || undefined,
         status: formData.status,
