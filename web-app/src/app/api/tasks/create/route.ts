@@ -13,20 +13,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 1: Find or create "Review" parent task
-    const reviewTask = await findOrCreateReviewTask();
+    // Step 1: Get custom fields once (optimization to reduce API calls)
+    const customFields = await clickupAPI.getCustomFields();
+    const developerField = customFields.find(field =>
+      field.name.toLowerCase().includes('developer')
+    );
 
-    // Step 2: Handle developer custom field mapping
+    // Step 2: Find or create "Review" parent task (pass custom fields to avoid duplicate call)
+    const reviewTask = await findOrCreateReviewTask(customFields, developerField);
+
+    // Step 3: Handle developer custom field mapping for the new task
     let taskData = { ...body };
     
-    if (body.developer) {
-      // Get custom fields to find the developer field ID
-      const customFields = await clickupAPI.getCustomFields();
-      const developerField = customFields.find(field =>
-        field.name.toLowerCase().includes('developer')
-      );
-      
-      if (developerField && developerField.type === 'drop_down') {
+    if (body.developer && developerField) {
+      if (developerField.type === 'drop_down') {
         // For dropdown fields, we need to find the option that matches the developer name
         const options = developerField.type_config?.options || [];
         const matchingOption = options.find((option: any) =>
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
           // If no matching option found, don't set the custom field
           console.warn(`No matching developer option found for: ${body.developer}`);
         }
-      } else if (developerField) {
+      } else {
         // For non-dropdown fields, use the string value directly
         taskData.custom_fields = [{
           id: developerField.id,
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       delete taskData.developer;
     }
 
-    // Step 3: Set parent task ID to make this a subtask of "Review"
+    // Step 4: Set parent task ID to make this a subtask of "Review"
     taskData.parent = reviewTask.id;
 
     // Create the task using ClickUp API
@@ -71,17 +71,34 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error in create task API:', error);
     
+    // Better error handling for different scenarios
+    let errorMessage = 'Failed to create task';
+    let statusCode = 500;
+    
+    if (error.message?.includes('timeout')) {
+      errorMessage = 'Request timed out. ClickUp may be experiencing delays. Please try again.';
+      statusCode = 408;
+    } else if (error.message?.includes('rate limit')) {
+      errorMessage = 'Too many requests. Please wait a moment and try again.';
+      statusCode = 429;
+    } else if (error.message?.includes('service is temporarily unavailable')) {
+      errorMessage = 'ClickUp service is temporarily unavailable. Please try again later.';
+      statusCode = 503;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return NextResponse.json(
       {
-        error: error.message || 'Failed to create task',
+        error: errorMessage,
         details: error.response?.data || null
       },
-      { status: error.response?.status || 500 }
+      { status: error.response?.status || statusCode }
     );
   }
 }
 
-async function findOrCreateReviewTask() {
+async function findOrCreateReviewTask(customFields?: any[], developerField?: any) {
   try {
     // Get all tasks to find existing "Review" task
     const allTasks = await clickupAPI.getTasks(true, false);
@@ -99,34 +116,39 @@ async function findOrCreateReviewTask() {
     // Create new "Review" parent task assigned to "Young"
     console.log('Creating new Review parent task...');
     
-    // Get custom fields and find developer field
-    const customFields = await clickupAPI.getCustomFields();
-    const developerField = customFields.find(field =>
-      field.name.toLowerCase().includes('developer')
-    );
+    // Use passed custom fields or fetch them if not provided
+    let fields = customFields;
+    let devField = developerField;
+    
+    if (!fields) {
+      fields = await clickupAPI.getCustomFields();
+      devField = fields.find(field =>
+        field.name.toLowerCase().includes('developer')
+      );
+    }
 
     let reviewTaskData: any = {
       name: 'Review',
       description: 'Parent task for all review items',
-      status: 'in progress'
+      status: 'IN PROGRESS'
     };
 
     // Set developer to "Young" if developer field exists
-    if (developerField && developerField.type === 'drop_down') {
-      const options = developerField.type_config?.options || [];
+    if (devField && devField.type === 'drop_down') {
+      const options = devField.type_config?.options || [];
       const youngOption = options.find((option: any) =>
         option.name.toLowerCase().includes('young')
       );
       
       if (youngOption) {
         reviewTaskData.custom_fields = [{
-          id: developerField.id,
+          id: devField.id,
           value: youngOption.orderindex || youngOption.id
         }];
       }
-    } else if (developerField) {
+    } else if (devField) {
       reviewTaskData.custom_fields = [{
-        id: developerField.id,
+        id: devField.id,
         value: 'Young'
       }];
     }
@@ -136,8 +158,18 @@ async function findOrCreateReviewTask() {
     
     return newReviewTask;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error finding/creating Review task:', error);
+    
+    // Better error handling for timeout scenarios
+    if (error.message?.includes('timeout')) {
+      throw new Error('ClickUp API timeout while creating Review parent task. Please try again in a moment.');
+    } else if (error.response?.status === 429) {
+      throw new Error('ClickUp API rate limit exceeded. Please wait a moment and try again.');
+    } else if (error.response?.status >= 500) {
+      throw new Error('ClickUp service is temporarily unavailable. Please try again later.');
+    }
+    
     throw error;
   }
 }

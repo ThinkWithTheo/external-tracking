@@ -87,15 +87,7 @@ const Header: React.FC<HeaderProps> = ({
               aria-label="Notifications"
             >
               <Bell className="h-4 w-4" />
-              <Badge
-                variant="error"
-                className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
-              >
-                {(() => {
-                  const alertCount = 12; // This would come from your state/props
-                  return alertCount > 9 ? '!' : alertCount;
-                })()}
-              </Badge>
+              {/* TODO: Add dynamic notification badge - see UI-IMPROVEMENT-PLAN.md */}
             </Button>
 
             {/* Settings */}

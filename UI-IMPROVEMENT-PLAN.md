@@ -397,6 +397,16 @@ module.exports = {
 - **Root Cause**: Filter state not connected to task display logic
 - **Files**: `/web-app/src/components/layout/FilterBar.tsx`, `/web-app/src/app/page.tsx`
 
+#### **4. Dynamic Notification Badge** 🔔
+- **Problem**: Notification badge currently hidden, needs dynamic count implementation
+- **Current**: Bell icon without badge, hardcoded logic removed
+- **Desired**:
+  - Dynamic count based on task criteria (high priority, overdue, etc.)
+  - Shows numbers 1-9, "!" for 10+ alerts
+  - Badge appears only when count > 0
+- **Files**: `/web-app/src/components/layout/Header.tsx`
+- **Status**: **TODO** - Infrastructure ready, needs count logic implementation
+
 ### **Implementation Plan**
 
 #### **Phase 1: Fix Developer Field (2-3 hours)**

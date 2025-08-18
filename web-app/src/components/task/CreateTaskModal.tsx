@@ -71,13 +71,14 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         setDeveloperOptions(data.developers || []);
       }
 
-      // For now, we'll use hardcoded statuses and let the server handle the ClickUp API calls
-      // In a production app, you'd create API endpoints for these as well
+      // Use ClickUp status names based on the available statuses
       const defaultStatuses = [
-        { id: '1', status: 'to do' },
-        { id: '2', status: 'in progress' },
-        { id: '3', status: 'review' },
-        { id: '4', status: 'done' }
+        { id: '1', status: 'OPEN' },
+        { id: '2', status: 'IN PROGRESS' },
+        { id: '3', status: 'IN REVIEW' },
+        { id: '4', status: 'BLOCKED' },
+        { id: '5', status: 'WONT DO' },
+        { id: '6', status: 'CLOSED' }
       ];
 
       setStatuses(defaultStatuses);
