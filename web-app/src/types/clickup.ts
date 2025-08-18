@@ -37,7 +37,7 @@ export interface ClickUpTask {
     email: string;
     profilePicture?: string;
   }>;
-  checklists: any[];
+  checklists: unknown[];
   tags: Array<{
     name: string;
     tag_fg: string;
@@ -60,13 +60,13 @@ export interface ClickUpTask {
     id: string;
     name: string;
     type: string;
-    type_config: any;
+    type_config: Record<string, unknown>;
     date_created: string;
     hide_from_guests: boolean;
-    value?: any;
+    value?: unknown;
   }>;
-  dependencies: any[];
-  linked_tasks: any[];
+  dependencies: unknown[];
+  linked_tasks: unknown[];
   team_id: string;
   url: string;
   permission_level: string;
@@ -127,7 +127,7 @@ export interface ClickUpComment {
     email: string;
     profilePicture?: string;
   };
-  reactions: any[];
+  reactions: unknown[];
   date: string;
 }
 
@@ -153,4 +153,121 @@ export interface ProcessedTask {
   subtasks: ProcessedTask[];
   isSubtask: boolean;
   parentId?: string;
+}
+
+// Additional API types
+export interface ClickUpSpace {
+  id: string;
+  name: string;
+  private: boolean;
+  statuses: unknown[];
+  multiple_assignees: boolean;
+  features: Record<string, unknown>;
+}
+
+export interface ClickUpList {
+  id: string;
+  name: string;
+  orderindex: number;
+  status?: unknown;
+  priority?: unknown;
+  assignee?: unknown;
+  task_count?: number;
+  due_date?: string;
+  start_date?: string;
+  folder: {
+    id: string;
+    name: string;
+    hidden: boolean;
+    access: boolean;
+  };
+  space: {
+    id: string;
+    name: string;
+    access: boolean;
+  };
+  archived: boolean;
+}
+
+export interface ClickUpFolder {
+  id: string;
+  name: string;
+  orderindex: number;
+  override_statuses: boolean;
+  hidden: boolean;
+  space: {
+    id: string;
+    name: string;
+    access: boolean;
+  };
+  task_count: string;
+  archived: boolean;
+  statuses: unknown[];
+  lists: ClickUpList[];
+}
+
+export interface ClickUpTeam {
+  id: string;
+  name: string;
+  color: string;
+  avatar?: string;
+  members: Array<{
+    user: {
+      id: number;
+      username: string;
+      color: string;
+      profilePicture?: string;
+    };
+  }>;
+}
+
+export interface ClickUpStatus {
+  id: string;
+  status: string;
+  orderindex: number;
+  color: string;
+  type: string;
+}
+
+export interface ClickUpCustomField {
+  id: string;
+  name: string;
+  type: string;
+  type_config?: {
+    default?: unknown;
+    placeholder?: string;
+    new_drop_down?: boolean;
+    options?: Array<{
+      id: string | number;
+      name: string;
+      color?: string;
+      orderindex?: number;
+    }>;
+  };
+  date_created: string;
+  hide_from_guests: boolean;
+  required?: boolean;
+}
+
+export interface TaskCreateData {
+  name: string;
+  description?: string;
+  status?: string;
+  priority?: number;
+  due_date?: number;
+  time_estimate?: number;
+  assignees?: number[];
+  custom_fields?: Array<{
+    id: string;
+    value: unknown;
+  }>;
+}
+
+export interface ApiError {
+  message: string;
+  response?: {
+    status: number;
+    statusText: string;
+    data: unknown;
+  };
 }

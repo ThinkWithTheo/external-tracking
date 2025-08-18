@@ -1,15 +1,28 @@
 import axios, { AxiosInstance } from 'axios';
-import { ClickUpTask, ClickUpListResponse, ClickUpCommentsResponse, ProcessedTask } from '@/types/clickup';
+import {
+  ClickUpTask,
+  ClickUpListResponse,
+  ClickUpCommentsResponse,
+  ProcessedTask,
+  ClickUpSpace,
+  ClickUpList,
+  ClickUpFolder,
+  ClickUpTeam,
+  ClickUpStatus,
+  ClickUpCustomField,
+  TaskCreateData,
+  ApiError
+} from '@/types/clickup';
 
 class ClickUpAPI {
   private client: AxiosInstance;
   private apiToken: string;
   private listId: string;
   private teamId: string;
-  private requestQueue: Promise<any>[] = [];
+  private requestQueue: Promise<unknown>[] = [];
   private lastRequestTime: number = 0;
   private readonly RATE_LIMIT_DELAY = 100; // 100ms between requests
-  private customFieldsCache: Map<string, any> = new Map(); // Cache for custom field definitions
+  private customFieldsCache: Map<string, ClickUpCustomField[]> = new Map(); // Cache for custom field definitions
 
   constructor() {
     this.apiToken = process.env.CLICKUP_API_TOKEN || '';
@@ -52,8 +65,9 @@ class ClickUpAPI {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await this.rateLimitedRequest(requestFn);
-      } catch (error: any) {
-        if (error.response?.status === 429 && attempt < maxRetries) {
+      } catch (error: unknown) {
+        const apiError = error as ApiError;
+        if (apiError.response?.status === 429 && attempt < maxRetries) {
           // Rate limited, wait longer before retry
           const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 10000); // Exponential backoff, max 10s
           console.log(`Rate limited, retrying in ${backoffDelay}ms (attempt ${attempt}/${maxRetries})`);
@@ -74,7 +88,7 @@ class ClickUpAPI {
    */
   async getTasks(includeSubtasks: boolean = true, includeClosed: boolean = false): Promise<ClickUpTask[]> {
     try {
-      const params: any = {
+      const params: Record<string, unknown> = {
         archived: false,
         subtasks: includeSubtasks,
         include_closed: includeClosed,
@@ -88,23 +102,24 @@ class ClickUpAPI {
 
       console.log(`Successfully fetched ${response.data.tasks.length} tasks`);
       return response.data.tasks;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       console.error('Error fetching tasks from ClickUp:', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
+        message: apiError.message,
+        status: apiError.response?.status,
+        statusText: apiError.response?.statusText,
+        data: apiError.response?.data,
         listId: this.listId,
       });
       
-      if (error.response?.status === 400) {
+      if (apiError.response?.status === 400) {
         throw new Error(`Invalid request to ClickUp API. Please check your List ID: ${this.listId}`);
-      } else if (error.response?.status === 401) {
+      } else if (apiError.response?.status === 401) {
         throw new Error('Invalid ClickUp API token. Please check your credentials.');
-      } else if (error.response?.status === 403) {
+      } else if (apiError.response?.status === 403) {
         throw new Error('Access denied. Please check your ClickUp permissions for this list.');
       } else {
-        throw new Error(`Failed to fetch tasks from ClickUp: ${error.message}`);
+        throw new Error(`Failed to fetch tasks from ClickUp: ${apiError.message}`);
       }
     }
   }
@@ -120,12 +135,13 @@ class ClickUpAPI {
         this.client.get<ClickUpCommentsResponse>(`/task/${taskId}/comment`)
       );
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       // If still failing after retries, log and return empty comments
-      if (error.response?.status === 429) {
+      if (apiError.response?.status === 429) {
         console.warn(`Rate limit exceeded for task ${taskId} comments, skipping`);
       } else {
-        console.error(`Error fetching comments for task ${taskId}:`, error.message);
+        console.error(`Error fetching comments for task ${taskId}:`, apiError.message);
       }
       return { comments: [] };
     }
@@ -135,13 +151,13 @@ class ClickUpAPI {
    * Fetch custom field definitions for a list
    * @returns Promise<any[]>
    */
-  async getCustomFields(): Promise<any[]> {
+  async getCustomFields(): Promise<ClickUpCustomField[]> {
     try {
       const cacheKey = `custom_fields_${this.listId}`;
       
       // Check cache first
       if (this.customFieldsCache.has(cacheKey)) {
-        return this.customFieldsCache.get(cacheKey);
+        return this.customFieldsCache.get(cacheKey) || [];
       }
 
       const response = await this.retryRequest(() =>
@@ -156,8 +172,9 @@ class ClickUpAPI {
       // Custom field definitions fetched successfully
 
       return customFields;
-    } catch (error: any) {
-      console.error('Error fetching custom fields:', error.message);
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      console.error('Error fetching custom fields:', apiError.message);
       return [];
     }
   }
@@ -169,13 +186,13 @@ class ClickUpAPI {
    * @param customFields - Array of custom field definitions
    * @returns { name: string; color: string } | undefined
    */
-  private getDropdownOption(fieldId: string, optionId: number, customFields: any[]): { name: string; color: string } | undefined {
+  private getDropdownOption(fieldId: string, optionId: number, customFields: ClickUpCustomField[]): { name: string; color: string } | undefined {
     const field = customFields.find(f => f.id === fieldId);
     if (!field || field.type !== 'drop_down') {
       return undefined;
     }
 
-    const option = field.type_config?.options?.find((opt: any) =>
+    const option = field.type_config?.options?.find((opt) =>
       opt.id === optionId || opt.orderindex === optionId
     );
     
@@ -196,7 +213,7 @@ class ClickUpAPI {
    * @param customFields - Array of custom field definitions
    * @returns string | undefined
    */
-  private getDropdownOptionName(fieldId: string, optionId: number, customFields: any[]): string | undefined {
+  private getDropdownOptionName(fieldId: string, optionId: number, customFields: ClickUpCustomField[]): string | undefined {
     const option = this.getDropdownOption(fieldId, optionId, customFields);
     return option?.name;
   }
@@ -268,7 +285,7 @@ class ClickUpAPI {
    * @param customFields - Custom field definitions for dropdown mapping
    * @returns Promise<ProcessedTask>
    */
-  private async processTask(task: ClickUpTask, isSubtask: boolean, parentId?: string, includeComments: boolean = false, customFields: any[] = []): Promise<ProcessedTask> {
+  private async processTask(task: ClickUpTask, isSubtask: boolean, parentId?: string, includeComments: boolean = false, customFields: ClickUpCustomField[] = []): Promise<ProcessedTask> {
     // Get comments for this task only if requested
     let commentsResponse: ClickUpCommentsResponse = { comments: [] };
     if (includeComments) {
@@ -334,15 +351,16 @@ class ClickUpAPI {
         }
       } else if (typeof developerField.value === 'object') {
         // Handle object values (user objects, dropdown selections, etc.)
-        if (developerField.value.name) {
-          developer = developerField.value.name;
-        } else if (developerField.value.username) {
-          developer = developerField.value.username;
-        } else if (developerField.value.email) {
-          developer = developerField.value.email;
-        } else if (developerField.value.value) {
+        const valueObj = developerField.value as Record<string, unknown>;
+        if (valueObj.name && typeof valueObj.name === 'string') {
+          developer = valueObj.name;
+        } else if (valueObj.username && typeof valueObj.username === 'string') {
+          developer = valueObj.username;
+        } else if (valueObj.email && typeof valueObj.email === 'string') {
+          developer = valueObj.email;
+        } else if (valueObj.value && typeof valueObj.value === 'string') {
           // Some dropdown fields have nested value property
-          developer = developerField.value.value;
+          developer = valueObj.value;
         }
       }
     }
@@ -375,7 +393,7 @@ class ClickUpAPI {
    * Get all spaces for the team
    * @returns Promise<any[]>
    */
-  async getSpaces(): Promise<any[]> {
+  async getSpaces(): Promise<ClickUpSpace[]> {
     try {
       const response = await this.client.get(`/team/${this.teamId}/space`);
       return response.data.spaces;
@@ -390,7 +408,7 @@ class ClickUpAPI {
    * @param spaceId - The space ID
    * @returns Promise<any[]>
    */
-  async getListsInSpace(spaceId: string): Promise<any[]> {
+  async getListsInSpace(spaceId: string): Promise<ClickUpList[]> {
     try {
       const response = await this.client.get(`/space/${spaceId}/list`);
       return response.data.lists;
@@ -405,7 +423,7 @@ class ClickUpAPI {
    * @param spaceId - The space ID
    * @returns Promise<any[]>
    */
-  async getFoldersInSpace(spaceId: string): Promise<any[]> {
+  async getFoldersInSpace(spaceId: string): Promise<ClickUpFolder[]> {
     try {
       const response = await this.client.get(`/space/${spaceId}/folder`);
       return response.data.folders;
@@ -420,7 +438,7 @@ class ClickUpAPI {
    * @param folderId - The folder ID
    * @returns Promise<any[]>
    */
-  async getListsInFolder(folderId: string): Promise<any[]> {
+  async getListsInFolder(folderId: string): Promise<ClickUpList[]> {
     try {
       const response = await this.client.get(`/folder/${folderId}/list`);
       return response.data.lists;
@@ -434,7 +452,7 @@ class ClickUpAPI {
    * Get team information
    * @returns Promise<any>
    */
-  async getTeam(): Promise<any> {
+  async getTeam(): Promise<ClickUpTeam> {
     try {
       const response = await this.client.get(`/team/${this.teamId}`);
       return response.data;
@@ -463,19 +481,7 @@ class ClickUpAPI {
    * @param taskData - Task creation data
    * @returns Promise<ClickUpTask>
    */
-  async createTask(taskData: {
-    name: string;
-    description?: string;
-    status?: string;
-    priority?: number;
-    due_date?: number;
-    time_estimate?: number;
-    assignees?: number[];
-    custom_fields?: Array<{
-      id: string;
-      value: any;
-    }>;
-  }): Promise<ClickUpTask> {
+  async createTask(taskData: TaskCreateData): Promise<ClickUpTask> {
     try {
       console.log('Creating task with data:', taskData);
       
@@ -485,23 +491,25 @@ class ClickUpAPI {
 
       console.log('Task created successfully:', response.data);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       console.error('Error creating task in ClickUp:', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
+        message: apiError.message,
+        status: apiError.response?.status,
+        statusText: apiError.response?.statusText,
+        data: apiError.response?.data,
         listId: this.listId,
       });
       
-      if (error.response?.status === 400) {
-        throw new Error(`Invalid task data. Please check your input: ${error.response?.data?.err || error.message}`);
-      } else if (error.response?.status === 401) {
+      if (apiError.response?.status === 400) {
+        const errorData = apiError.response?.data as { err?: string };
+        throw new Error(`Invalid task data. Please check your input: ${errorData?.err || apiError.message}`);
+      } else if (apiError.response?.status === 401) {
         throw new Error('Invalid ClickUp API token. Please check your credentials.');
-      } else if (error.response?.status === 403) {
+      } else if (apiError.response?.status === 403) {
         throw new Error('Access denied. Please check your ClickUp permissions for this list.');
       } else {
-        throw new Error(`Failed to create task in ClickUp: ${error.message}`);
+        throw new Error(`Failed to create task in ClickUp: ${apiError.message}`);
       }
     }
   }
@@ -510,15 +518,16 @@ class ClickUpAPI {
    * Get available statuses for the list
    * @returns Promise<any[]>
    */
-  async getStatuses(): Promise<any[]> {
+  async getStatuses(): Promise<ClickUpStatus[]> {
     try {
       const response = await this.retryRequest(() =>
         this.client.get(`/list/${this.listId}`)
       );
       
       return response.data.statuses || [];
-    } catch (error: any) {
-      console.error('Error fetching statuses:', error.message);
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      console.error('Error fetching statuses:', apiError.message);
       return [];
     }
   }
@@ -527,15 +536,16 @@ class ClickUpAPI {
    * Get team members
    * @returns Promise<any[]>
    */
-  async getTeamMembers(): Promise<any[]> {
+  async getTeamMembers(): Promise<Array<{ user: { id: number; username: string; color: string; profilePicture?: string } }>> {
     try {
       const response = await this.retryRequest(() =>
         this.client.get(`/team/${this.teamId}/member`)
       );
       
       return response.data.members || [];
-    } catch (error: any) {
-      console.error('Error fetching team members:', error.message);
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      console.error('Error fetching team members:', apiError.message);
       return [];
     }
   }
