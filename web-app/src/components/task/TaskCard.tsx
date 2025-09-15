@@ -147,13 +147,11 @@ const TaskCard: React.FC<TaskCardProps> = ({
           {/* Status Badge */}
           <StatusBadge status={task.status} color={task.statusColor} />
 
-          {/* Priority Badge */}
-          {task.priority && (
-            <PriorityBadge 
-              priority={task.priority.name} 
-              color={task.priority.color}
-            />
-          )}
+          {/* Priority Badge - Always show, even if no priority */}
+          <PriorityBadge
+            priority={task.priority?.name || 'None'}
+            color={task.priority?.color}
+          />
 
           {/* Time Estimate */}
           {task.timeEstimate && (

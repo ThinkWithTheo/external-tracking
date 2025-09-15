@@ -16,6 +16,7 @@ export default function Home() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch tasks function
   const fetchTasks = async () => {
@@ -39,39 +40,66 @@ export default function Home() {
     fetchTasks();
   }, []);
 
-  // Filter groups configuration
+  // Filter groups configuration (removed Status filter)
   const filterGroups: FilterGroup[] = [
-    {
-      id: 'status',
-      label: 'Status',
-      multiSelect: true,
-      options: [
-        { id: 'todo', label: 'To Do', value: 'todo', count: tasks.filter(t => t.status.toLowerCase().includes('todo')).length },
-        { id: 'progress', label: 'In Progress', value: 'progress', count: tasks.filter(t => t.status.toLowerCase().includes('progress')).length },
-        { id: 'review', label: 'In Review', value: 'review', count: tasks.filter(t => t.status.toLowerCase().includes('review')).length },
-        { id: 'done', label: 'Done', value: 'done', count: tasks.filter(t => t.status.toLowerCase().includes('done')).length },
-      ]
-    },
     {
       id: 'priority',
       label: 'Priority',
       multiSelect: true,
       options: [
-        { id: 'urgent', label: 'Urgent', value: 'urgent', count: tasks.filter(t => t.priority?.name.toLowerCase() === 'urgent').length },
-        { id: 'high', label: 'High', value: 'high', count: tasks.filter(t => t.priority?.name.toLowerCase() === 'high').length },
-        { id: 'normal', label: 'Normal', value: 'normal', count: tasks.filter(t => t.priority?.name.toLowerCase() === 'normal').length },
-        { id: 'low', label: 'Low', value: 'low', count: tasks.filter(t => t.priority?.name.toLowerCase() === 'low').length },
+        {
+          id: 'urgent',
+          label: 'Urgent',
+          value: 'urgent',
+          count: tasks.filter(t =>
+            t.priority?.name.toLowerCase() === 'urgent' ||
+            t.subtasks.some(st => st.priority?.name.toLowerCase() === 'urgent')
+          ).length
+        },
+        {
+          id: 'high',
+          label: 'High',
+          value: 'high',
+          count: tasks.filter(t =>
+            t.priority?.name.toLowerCase() === 'high' ||
+            t.subtasks.some(st => st.priority?.name.toLowerCase() === 'high')
+          ).length
+        },
+        {
+          id: 'normal',
+          label: 'Normal',
+          value: 'normal',
+          count: tasks.filter(t =>
+            t.priority?.name.toLowerCase() === 'normal' ||
+            t.subtasks.some(st => st.priority?.name.toLowerCase() === 'normal')
+          ).length
+        },
+        {
+          id: 'low',
+          label: 'Low',
+          value: 'low',
+          count: tasks.filter(t =>
+            t.priority?.name.toLowerCase() === 'low' ||
+            t.subtasks.some(st => st.priority?.name.toLowerCase() === 'low')
+          ).length
+        },
       ]
     },
     {
       id: 'assignee',
       label: 'Assignee',
       multiSelect: true,
-      options: Array.from(new Set(tasks.map(t => t.developer).filter(Boolean))).map(dev => ({
+      options: Array.from(new Set([
+        ...tasks.map(t => t.developer).filter(Boolean),
+        ...tasks.flatMap(t => t.subtasks.map(st => st.developer).filter(Boolean))
+      ])).map(dev => ({
         id: dev!,
         label: dev!,
         value: dev!,
-        count: tasks.filter(t => t.developer === dev).length
+        count: tasks.filter(t =>
+          t.developer === dev ||
+          t.subtasks.some(st => st.developer === dev)
+        ).length
       }))
     }
   ];
@@ -85,6 +113,11 @@ export default function Home() {
 
   const handleClearAllFilters = () => {
     setActiveFilters({});
+    setSearchQuery('');
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
   };
 
   const handleCreateTask = () => {
@@ -100,44 +133,72 @@ export default function Home() {
     fetchTasks();
   };
 
-  // Filter tasks based on active filters
-  const filteredTasks = tasks.filter(task => {
-    // Status filter
-    if (activeFilters.status && activeFilters.status.length > 0) {
-      const taskStatus = task.status.toLowerCase();
-      const matchesStatus = activeFilters.status.some(status => {
-        switch (status) {
-          case 'todo':
-            return taskStatus.includes('todo') || taskStatus.includes('to do');
-          case 'progress':
-            return taskStatus.includes('progress') || taskStatus.includes('in progress');
-          case 'review':
-            return taskStatus.includes('review');
-          case 'done':
-            return taskStatus.includes('done') || taskStatus.includes('complete');
-          default:
-            return taskStatus.includes(status);
-        }
-      });
-      if (!matchesStatus) return false;
+  // Filter tasks and their subtasks based on search query and active filters
+  // Filters are applied cumulatively (AND logic) - subtasks must match ALL active filters
+  const filteredTasks = tasks.map(task => {
+    // Create a copy of the task to avoid mutating the original
+    const filteredTask = { ...task, subtasks: [...task.subtasks] };
+    let shouldIncludeTask = true;
+    
+    // Start with all subtasks and progressively filter them
+    let filteredSubtasks = [...task.subtasks];
+    
+    // FILTER 1: Search filter - special case: if parent matches, show all subtasks
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const taskNameMatches = task.name.toLowerCase().includes(query);
+      
+      if (!taskNameMatches) {
+        // Parent doesn't match, so filter subtasks to only those matching the search
+        filteredSubtasks = filteredSubtasks.filter(subtask =>
+          subtask.name.toLowerCase().includes(query)
+        );
+      }
+      // If parent matches search, keep all subtasks (don't filter by search)
     }
 
-    // Priority filter
+    // FILTER 2: Priority filter - filters the already search-filtered subtasks
     if (activeFilters.priority && activeFilters.priority.length > 0) {
-      if (!task.priority) return false;
-      const matchesPriority = activeFilters.priority.includes(task.priority.name.toLowerCase());
-      if (!matchesPriority) return false;
+      // Filter current subtasks to only those matching the priority
+      filteredSubtasks = filteredSubtasks.filter(subtask =>
+        subtask.priority && activeFilters.priority.includes(subtask.priority.name.toLowerCase())
+      );
     }
 
-    // Assignee filter (using developer field)
+    // FILTER 3: Assignee filter - filters the already search+priority filtered subtasks
     if (activeFilters.assignee && activeFilters.assignee.length > 0) {
-      if (!task.developer) return false;
-      const matchesAssignee = activeFilters.assignee.includes(task.developer);
-      if (!matchesAssignee) return false;
+      // Filter current subtasks to only those matching the assignee
+      filteredSubtasks = filteredSubtasks.filter(subtask =>
+        subtask.developer && activeFilters.assignee.includes(subtask.developer)
+      );
+    }
+    
+    // After all filters, subtasks must match ALL active filters (AND logic)
+    
+    // Update the filtered task with the filtered subtasks
+    filteredTask.subtasks = filteredSubtasks;
+    
+    // Only include task if it has subtasks after filtering or if no filters are active
+    const hasActiveFilters = searchQuery ||
+      (activeFilters.priority && activeFilters.priority.length > 0) ||
+      (activeFilters.assignee && activeFilters.assignee.length > 0);
+    
+    if (hasActiveFilters) {
+      // For search filter: include task if parent name matches OR has matching subtasks
+      if (searchQuery && task.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        shouldIncludeTask = true;
+      }
+      // For priority/assignee filters: ONLY include task if it has matching subtasks
+      // Parent task properties don't matter for these filters
+      else if (filteredSubtasks.length > 0) {
+        shouldIncludeTask = true;
+      } else {
+        shouldIncludeTask = false;
+      }
     }
 
-    return true;
-  });
+    return shouldIncludeTask ? filteredTask : null;
+  }).filter(task => task !== null) as ProcessedTask[];
 
   return (
     <PageTransition className="min-h-screen bg-[var(--color-background)]">
@@ -168,6 +229,8 @@ export default function Home() {
                 activeFilters={activeFilters}
                 onFilterChange={handleFilterChange}
                 onClearAll={handleClearAllFilters}
+                searchQuery={searchQuery}
+                onSearchChange={handleSearchChange}
               />
             </SlideIn>
           )}

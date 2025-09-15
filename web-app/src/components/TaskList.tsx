@@ -29,7 +29,7 @@ const TaskList: React.FC<TaskListProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
 
   // Use prop tasks if provided, otherwise fetch internally
   const tasks = propTasks || internalTasks;
@@ -83,7 +83,17 @@ const TaskList: React.FC<TaskListProps> = ({
   };
 
   const getTotalSubtasks = () => {
-    return tasks.reduce((acc, task) => acc + task.subtasks.length, 0);
+    return tasks.reduce((acc, task) => acc + (task.subtasks?.length || 0), 0);
+  };
+
+  const getTotalHours = () => {
+    let totalHours = 0;
+    tasks.forEach(task => {
+      task.subtasks?.forEach(subtask => {
+        totalHours += (subtask.timeEstimate || 0) / (1000 * 60 * 60);
+      });
+    });
+    return totalHours;
   };
 
   if (loading) {
@@ -150,6 +160,10 @@ const TaskList: React.FC<TaskListProps> = ({
               <span>{tasks.length} tasks</span>
               <span>•</span>
               <span>{getTotalSubtasks()} subtasks</span>
+              <span>•</span>
+              <span className="font-medium text-[var(--color-warning-600)]">
+                {getTotalHours().toFixed(1)}h total
+              </span>
             </div>
           </div>
           

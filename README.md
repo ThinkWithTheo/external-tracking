@@ -151,23 +151,49 @@ The External Tracking System provides a centralized platform for monitoring and 
 - Cost threshold notifications
 - Performance degradation alerts
 
-## ClickUp Integration ✅ COMPLETED & ENHANCED
+## ClickUp Integration ✅ COMPLETED & ENHANCED (January 2025)
 
 The [`/web-app`](web-app/) directory contains a **fully operational** Next.js application that provides a modern, professional web interface for viewing ClickUp tasks and subtasks. This integration features a **completely redesigned UI** with modern design patterns and enhanced user experience.
 
 ### 🎯 Features (All Implemented & Enhanced)
 - **✅ Modern Card-Based Interface**: Beautiful task cards with hover effects, shadows, and visual hierarchy
-- **✅ Comprehensive Stats Dashboard**: Real-time metrics with progress bars and visual indicators
+- **✅ Comprehensive Stats Dashboard**: Real-time metrics with three key statistics:
+  - **Active Tasks**: Total count of all subtasks in the system
+  - **In Progress**: Count of subtasks currently being worked on with total hours
+  - **Developers**: Number of unique developers with total hours and week estimates
+- **✅ Task Organization by Status & Priority**: Three distinct sections for better task management:
+  - **In Progress Tasks by Developer**: Shows subtasks currently being worked on (filtered by status)
+  - **Urgent Priority Tasks by Developer**: Shows urgent subtasks not in progress (filtered by priority)
+  - **High Priority Tasks by Developer**: Shows high priority subtasks not in progress (filtered by priority)
 - **✅ Advanced Filtering System**: Quick filters, dropdown filters, and active filter management
 - **✅ Dual View Modes**: Toggle between modern cards and traditional table views
 - **✅ Responsive Design**: Perfect adaptation across mobile, tablet, and desktop
 - **✅ Smooth Animations**: Professional micro-interactions and page transitions
-- **✅ Real-time Data**: Live synchronization with ClickUp API
+- **✅ Real-time Data**: Live synchronization with ClickUp API with pagination support
 - **✅ Professional Loading States**: Skeleton screens with shimmer animations
 - **✅ Enhanced Typography**: Inter font with perfect hierarchy and spacing
 - **✅ Accessibility Compliant**: WCAG guidelines with proper focus management
+- **✅ Priority System**: Full support for all 5 priority levels (Urgent, High, Normal, Low, None)
+- **✅ Smart Hour Calculation**: Hours tracked from subtasks only, preventing double-counting
 
-### 🎨 UI Enhancement Summary (January 2025)
+### 🎨 Latest Updates (January 2025)
+
+#### **ClickUp API Enhancements**
+- **Pagination Support**: API now fetches ALL tasks using pagination (not limited to first 100)
+- **Priority Detection**: Enhanced to detect both built-in ClickUp priority fields and custom fields
+- **Task Hierarchy Understanding**:
+  - **Parent tasks are used only for grouping and organization**
+  - Subtasks are the actual work items that get displayed
+  - Each subtask shows as "Parent Task - Subtask Name" for context
+- **Hour Calculation Logic**:
+  - Hours are ONLY calculated from subtasks (parent tasks never contribute hours)
+  - Prevents double-counting when developers are assigned to both parent and subtasks
+  - Shows "(X subtasks)" indicator on parent tasks for clarity
+- **Status-Priority Separation**:
+  - Tasks in "In Progress" status are excluded from Priority sections
+  - Ensures no duplication between status-based and priority-based views
+
+#### **UI Enhancement Summary**
 A comprehensive UI overhaul was completed following modern design principles:
 
 #### **Design System Implementation**
@@ -180,17 +206,28 @@ A comprehensive UI overhaul was completed following modern design principles:
 #### **Key UI Components Created**
 - **Button Component**: 7 variants (primary, secondary, outline, ghost, success, warning, error)
 - **Card System**: Flexible cards with hover effects and multiple variants
-- **Badge Components**: Status and priority-specific styling with animations
+- **Badge Components**: Status and priority-specific styling with animations (supports all 5 priority levels)
 - **Avatar System**: User avatars with fallbacks and group support
 - **Progress Components**: Linear, circular, and multi-step progress indicators
 - **Skeleton Loaders**: Professional loading states matching final layout
 - **Animation Components**: Page transitions, stagger animations, and micro-interactions
+- **Task Organization Sections**: Three dedicated dashboard sections:
+  - In Progress Tasks by Developer (status-based filtering)
+  - Urgent Priority Tasks by Developer (excludes in-progress)
+  - High Priority Tasks by Developer (excludes in-progress)
 
 #### **Layout Enhancements**
 - **Modern Header**: Gradient background, search functionality, and action buttons
-- **Stats Dashboard**: Comprehensive metrics with visual progress tracking
+- **Stats Dashboard**: Three key metrics cards:
+  - **Active Tasks**: Total subtask count (renamed from "Active Subtasks" for clarity)
+  - **In Progress**: Subtasks being worked on with hours
+  - **Developers**: Unique developer count with total hours and week estimates (hours ÷ 30)
+- **Task Sections by Developer**: Three distinct sections showing:
+  - **In Progress Tasks by Developer**: Subtasks with "in progress", "active", or "working" status
+  - **Urgent Priority Tasks by Developer**: Urgent priority subtasks (excluding those in progress)
+  - **High Priority Tasks by Developer**: High priority subtasks (excluding those in progress)
 - **Filter Bar**: Advanced filtering with quick access and active filter chips
-- **Task Cards**: Beautiful card-based layout with priority indicators and hover effects
+- **Task Cards**: Beautiful card-based layout with all 5 priority levels properly displayed
 - **Responsive Grid**: Adaptive layout (1 col mobile, 2 col tablet, 3-4 col desktop)
 
 ### 🚀 Current Status

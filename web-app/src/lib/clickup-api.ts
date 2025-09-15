@@ -81,27 +81,49 @@ class ClickUpAPI {
   }
 
   /**
-   * Fetch tasks from the specified ClickUp list
+   * Fetch tasks from the specified ClickUp list with pagination support
    * @param includeSubtasks - Whether to include subtasks in the response
    * @param includeClosed - Whether to include closed tasks
    * @returns Promise<ClickUpTask[]>
    */
   async getTasks(includeSubtasks: boolean = true, includeClosed: boolean = false): Promise<ClickUpTask[]> {
     try {
-      const params: Record<string, unknown> = {
-        archived: false,
-        subtasks: includeSubtasks,
-        include_closed: includeClosed,
-      };
-
-      console.log(`Fetching tasks from list: ${this.listId} with params:`, params);
+      let allTasks: ClickUpTask[] = [];
+      let page = 0;
+      let hasMore = true;
       
-      const response = await this.retryRequest(() =>
-        this.client.get<ClickUpListResponse>(`/list/${this.listId}/task`, { params })
-      );
+      while (hasMore) {
+        const params: Record<string, unknown> = {
+          archived: false,
+          subtasks: includeSubtasks,
+          include_closed: includeClosed,
+          page: page,
+        };
 
-      console.log(`Successfully fetched ${response.data.tasks.length} tasks`);
-      return response.data.tasks;
+        console.log(`Fetching tasks from list: ${this.listId} - Page ${page}`);
+        
+        const response = await this.retryRequest(() =>
+          this.client.get<ClickUpListResponse>(`/list/${this.listId}/task`, { params })
+        );
+
+        const tasks = response.data.tasks;
+        console.log(`Fetched ${tasks.length} tasks from page ${page}`);
+        
+        if (tasks.length === 0) {
+          hasMore = false;
+        } else {
+          allTasks = allTasks.concat(tasks);
+          page++;
+          
+          // Check if this is the last page
+          if (response.data.last_page === true || tasks.length < 100) {
+            hasMore = false;
+          }
+        }
+      }
+
+      console.log(`Successfully fetched ${allTasks.length} total tasks across ${page} pages`);
+      return allTasks;
     } catch (error: unknown) {
       const apiError = error as ApiError;
       console.error('Error fetching tasks from ClickUp:', {
@@ -226,12 +248,28 @@ class ClickUpAPI {
   async processTasksForUI(tasks: ClickUpTask[], includeComments: boolean = false): Promise<ProcessedTask[]> {
     // Fetch custom field definitions once for all tasks
     const customFields = await this.getCustomFields();
-    // Filter out closed tasks
-    const openTasks = tasks.filter(task =>
-      task.status.type !== 'closed' &&
-      task.status.status.toLowerCase() !== 'closed' &&
-      !task.archived
-    );
+    
+    // Filter out closed and completed tasks
+    const initialCount = tasks.length;
+    const openTasks = tasks.filter(task => {
+      const statusLower = task.status.status.toLowerCase();
+      const statusType = task.status.type?.toLowerCase();
+      
+      // Exclude tasks that are closed, completed, done, or archived
+      return statusType !== 'closed' &&
+             statusType !== 'done' &&
+             statusType !== 'complete' &&
+             statusLower !== 'closed' &&
+             statusLower !== 'complete' &&
+             statusLower !== 'completed' &&
+             statusLower !== 'done' &&
+             !task.archived;
+    });
+    
+    const filteredCount = initialCount - openTasks.length;
+    if (filteredCount > 0) {
+      console.log(`Filtered out ${filteredCount} completed/closed tasks from ${initialCount} total tasks`);
+    }
 
     // Separate main tasks and subtasks
     const mainTasks = openTasks.filter(task => !task.parent);
@@ -292,13 +330,6 @@ class ClickUpAPI {
       commentsResponse = await this.getTaskComments(task.id);
     }
 
-    // Debug: Log all custom fields to understand the structure
-    console.log(`Task "${task.name}" custom fields:`, task.custom_fields.map(field => ({
-      name: field.name,
-      type: field.type,
-      value: field.value
-    })));
-
     // Find developer from custom fields
     const developerField = task.custom_fields.find(field => {
       const fieldName = field.name.toLowerCase();
@@ -308,12 +339,6 @@ class ClickUpAPI {
              fieldName.includes('developer') ||
              fieldName.includes('assignee');
     });
-
-    console.log(`Developer field found for task "${task.name}":`, developerField ? {
-      name: developerField.name,
-      type: developerField.type,
-      value: developerField.value
-    } : 'No developer field found');
 
     let developer: string | undefined;
     let developerColor: string | undefined;
@@ -367,6 +392,42 @@ class ClickUpAPI {
 
     // No fallback to assignee - if no developer field value, leave as undefined to show "Unassigned"
 
+    // Check for Priority in custom fields (similar to Developer)
+    const priorityField = task.custom_fields.find(field => {
+      const fieldName = field.name.toLowerCase();
+      return fieldName === 'priority' ||
+             fieldName === 'priorities' ||
+             fieldName.includes('priority');
+    });
+
+    let priority: { name: string; color: string } | undefined;
+    
+    // First try built-in priority field
+    if (task.priority) {
+      priority = {
+        name: task.priority.priority,
+        color: task.priority.color,
+      };
+    }
+    // Then check custom field
+    else if (priorityField && priorityField.value !== undefined && priorityField.value !== null) {
+      // Handle dropdown field for priority
+      if (typeof priorityField.value === 'number') {
+        const dropdownOption = this.getDropdownOption(priorityField.id, priorityField.value, customFields);
+        if (dropdownOption) {
+          priority = {
+            name: dropdownOption.name,
+            color: dropdownOption.color
+          };
+        }
+      } else if (typeof priorityField.value === 'string') {
+        priority = {
+          name: priorityField.value,
+          color: '#6B7280' // Default gray color
+        };
+      }
+    }
+
     // Developer processing complete
 
     return {
@@ -374,10 +435,7 @@ class ClickUpAPI {
       name: task.name,
       status: task.status.status,
       statusColor: task.status.color,
-      priority: task.priority ? {
-        name: task.priority.priority,
-        color: task.priority.color,
-      } : undefined,
+      priority,
       timeEstimate: task.time_estimate,
       developer,
       developerColor,

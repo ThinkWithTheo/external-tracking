@@ -2,6 +2,7 @@ import React from 'react';
 import { ProcessedTask } from '@/types/clickup';
 import { Clock, User, Calendar, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
+import { PriorityBadge } from '@/components/ui/Badge';
 
 interface TaskRowProps {
   task: ProcessedTask;
@@ -138,9 +139,11 @@ const TaskRow: React.FC<TaskRowProps> = ({
 
         {/* Priority */}
         <div className="w-20 text-center px-2">
-          <span className="text-sm text-gray-600">
-            {task.priority?.name || '—'}
-          </span>
+          <PriorityBadge
+            priority={task.priority?.name || 'None'}
+            color={task.priority?.color}
+            size="sm"
+          />
         </div>
 
         {/* Comments */}

@@ -23,6 +23,7 @@ const badgeVariants = cva(
         high: "border-transparent bg-[var(--color-warning-500)] text-white",
         normal: "border-transparent bg-[var(--color-primary-500)] text-white",
         low: "border-transparent bg-[var(--color-text-muted)] text-white",
+        none: "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]",
       },
       size: {
         sm: "px-2 py-0.5 text-xs",
@@ -124,12 +125,19 @@ function PriorityBadge({ priority, color, className, ...props }: PriorityBadgePr
         return 'normal';
       case 'low':
         return 'low';
+      case 'clear':
+      case 'none':
+      case '':
+        return 'none';
       default:
-        return 'normal';
+        return 'none';
     }
   };
 
   const variant = getPriorityVariant(priority);
+  
+  // Display "None" for clear/empty priorities
+  const displayText = priority.toLowerCase() === 'clear' || priority === '' ? 'None' : priority;
   
   return (
     <Badge
@@ -138,7 +146,7 @@ function PriorityBadge({ priority, color, className, ...props }: PriorityBadgePr
       style={color ? { backgroundColor: color } : undefined}
       {...props}
     >
-      {priority}
+      {displayText}
     </Badge>
   );
 }

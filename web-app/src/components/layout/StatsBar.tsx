@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { CheckCircle, Clock, AlertCircle, Users, TrendingUp, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle, Clock, AlertCircle, Users, TrendingUp, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Progress } from '@/components/ui/Progress';
@@ -101,146 +101,557 @@ const StatCard: React.FC<StatCardProps> = ({
 };
 
 const StatsBar: React.FC<StatsBarProps> = ({ tasks, className }) => {
-  // Calculate statistics
-  const totalTasks = tasks.length;
+  // State for collapsible sections
+  const [isUrgentCollapsed, setIsUrgentCollapsed] = useState(true);
+  const [isHighCollapsed, setIsHighCollapsed] = useState(true);
+  
+  // Calculate statistics based on subtasks (parent tasks are just for grouping)
   const totalSubtasks = tasks.reduce((acc, task) => acc + task.subtasks.length, 0);
   
-  const completedTasks = tasks.filter(task => 
-    task.status.toLowerCase().includes('done') || 
-    task.status.toLowerCase().includes('complete') ||
-    task.status.toLowerCase().includes('closed')
-  ).length;
+  // Count in-progress subtasks and calculate their hours
+  let inProgressSubtasks = 0;
+  let inProgressHours = 0;
+  tasks.forEach(task => {
+    task.subtasks?.forEach(subtask => {
+      if (subtask.status.toLowerCase().includes('progress') ||
+          subtask.status.toLowerCase().includes('active') ||
+          subtask.status.toLowerCase().includes('working')) {
+        inProgressSubtasks++;
+        inProgressHours += (subtask.timeEstimate || 0) / (1000 * 60 * 60);
+      }
+    });
+  });
   
-  const inProgressTasks = tasks.filter(task => 
-    task.status.toLowerCase().includes('progress') ||
-    task.status.toLowerCase().includes('active') ||
-    task.status.toLowerCase().includes('working')
-  ).length;
+  // Count unique developers from subtasks only
+  const allDevelopers = new Set<string>();
+  tasks.forEach(task => {
+    task.subtasks?.forEach(subtask => {
+      const developer = subtask.developer || task.developer;
+      if (developer) {
+        allDevelopers.add(developer);
+      }
+    });
+  });
+  const assignedDevelopers = allDevelopers.size;
   
-  const overdueTasks = tasks.filter(task => {
-    if (!task.dueDate) return false;
-    const dueDate = new Date(parseInt(task.dueDate));
-    return dueDate < new Date() && !task.status.toLowerCase().includes('done');
-  }).length;
-  
-  const highPriorityTasks = tasks.filter(task => 
-    task.priority?.name.toLowerCase() === 'high' || 
-    task.priority?.name.toLowerCase() === 'urgent'
-  ).length;
-  
-  const assignedDevelopers = new Set(
-    tasks.map(task => task.developer).filter(Boolean)
-  ).size;
-  
-  const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-  
-  // Calculate estimated total time
+  // Calculate estimated total time from subtasks only
   const totalEstimatedTime = tasks.reduce((acc, task) => {
-    const taskTime = task.timeEstimate || 0;
-    const subtaskTime = task.subtasks.reduce((subAcc, subtask) => 
+    const subtaskTime = task.subtasks.reduce((subAcc, subtask) =>
       subAcc + (subtask.timeEstimate || 0), 0
     );
-    return acc + taskTime + subtaskTime;
+    return acc + subtaskTime;
   }, 0);
+  
+  // Calculate total hours and weeks
+  const totalHours = totalEstimatedTime / (1000 * 60 * 60);
+  const totalWeeks = assignedDevelopers > 0 ? (totalHours / 6 / 5 / assignedDevelopers) : 0;
   
   const formatTime = (timeInMs: number): string => {
     const hours = Math.floor(timeInMs / (1000 * 60 * 60));
     return `${hours}h`;
   };
+  
+  const formatWeeks = (weeks: number): string => {
+    if (weeks < 1) {
+      const days = Math.ceil(weeks * 5);
+      return `${days} day${days !== 1 ? 's' : ''}`;
+    }
+    return `${weeks.toFixed(1)} week${weeks !== 1 ? 's' : ''}`;
+  };
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Quick Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* Quick Stats Grid - Focused on subtasks and work metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
-          title="Total Tasks"
-          value={totalTasks}
-          subtitle={`${totalSubtasks} subtasks`}
+          title="Active Tasks"
+          value={totalSubtasks}
+          subtitle={`Total work items`}
           icon={<CheckCircle className="h-5 w-5" />}
           variant="default"
         />
         
         <StatCard
           title="In Progress"
-          value={inProgressTasks}
-          subtitle={`${Math.round((inProgressTasks / totalTasks) * 100)}% of total`}
+          value={inProgressSubtasks}
+          subtitle={inProgressHours > 0 ? `${inProgressHours.toFixed(1)}h total` : "No hours estimated"}
           icon={<Clock className="h-5 w-5" />}
           variant="warning"
         />
         
         <StatCard
-          title="Completed"
-          value={completedTasks}
-          subtitle={`${Math.round(completionRate)}% done`}
-          icon={<CheckCircle className="h-5 w-5" />}
-          variant="success"
-        />
-        
-        <StatCard
-          title="Overdue"
-          value={overdueTasks}
-          subtitle={overdueTasks > 0 ? "Need attention" : "All on track"}
-          icon={<AlertCircle className="h-5 w-5" />}
-          variant={overdueTasks > 0 ? "error" : "success"}
-        />
-        
-        <StatCard
-          title="High Priority"
-          value={highPriorityTasks}
-          subtitle={`${Math.round((highPriorityTasks / totalTasks) * 100)}% urgent`}
-          icon={<AlertCircle className="h-5 w-5" />}
-          variant={highPriorityTasks > 0 ? "error" : "default"}
-        />
-        
-        <StatCard
           title="Developers"
           value={assignedDevelopers}
-          subtitle={totalEstimatedTime > 0 ? formatTime(totalEstimatedTime) : "No estimates"}
+          subtitle={totalHours > 0 ? `${totalHours.toFixed(0)}h / ${formatWeeks(totalWeeks)}` : "No estimates"}
           icon={<Users className="h-5 w-5" />}
           variant="default"
         />
       </div>
       
-      {/* Progress Overview */}
+      {/* In Progress Tasks by Developer */}
       <Card className="p-4">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
-              Project Progress
+              In Progress Tasks by Developer
             </h3>
-            <Badge variant="outline" className="text-xs">
-              {Math.round(completionRate)}% Complete
+            <Badge variant="warning" className="text-xs">
+              {inProgressSubtasks} In Progress
             </Badge>
           </div>
           
-          <Progress
-            value={completionRate}
-            variant="gradient"
-            showLabel
-            label="Overall Completion"
-            className="w-full"
-          />
-          
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-lg font-semibold text-[var(--color-success-600)]">
-                {completedTasks}
-              </p>
-              <p className="text-xs text-[var(--color-text-muted)]">Completed</p>
+          {(() => {
+            // Collect all in-progress subtasks with their parent task names
+            const inProgressSubtasksList: Array<{
+              subtask: ProcessedTask;
+              parentName: string;
+              developer: string;
+              developerColor: string;
+            }> = [];
+            
+            // Check each task's subtasks for in-progress status
+            tasks.forEach(task => {
+              if (task.subtasks && task.subtasks.length > 0) {
+                task.subtasks.forEach(subtask => {
+                  // Check if the subtask itself is in progress
+                  const isSubtaskInProgress = subtask.status.toLowerCase().includes('progress') ||
+                                             subtask.status.toLowerCase().includes('active') ||
+                                             subtask.status.toLowerCase().includes('working');
+                  
+                  if (isSubtaskInProgress) {
+                    inProgressSubtasksList.push({
+                      subtask,
+                      parentName: task.name,
+                      developer: subtask.developer || task.developer || 'Unassigned',
+                      developerColor: subtask.developerColor || task.developerColor || '#6B7280'
+                    });
+                  }
+                });
+              }
+            });
+            
+            // Group subtasks by developer
+            const subtasksByDeveloper = inProgressSubtasksList.reduce((acc, item) => {
+              const developer = item.developer;
+              if (!acc[developer]) {
+                acc[developer] = {
+                  subtasks: [],
+                  totalHours: 0,
+                  color: item.developerColor
+                };
+              }
+              acc[developer].subtasks.push(item);
+              
+              // Add subtask hours
+              const subtaskHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+              acc[developer].totalHours += subtaskHours;
+              
+              return acc;
+            }, {} as Record<string, { subtasks: typeof inProgressSubtasksList, totalHours: number, color: string }>);
+            
+            const developers = Object.entries(subtasksByDeveloper).sort((a, b) =>
+              b[1].totalHours - a[1].totalHours
+            );
+            
+            if (developers.length === 0) {
+              return (
+                <div className="text-center py-8 text-[var(--color-text-muted)]">
+                  No in-progress subtasks found
+                </div>
+              );
+            }
+            
+            return (
+              <div className="space-y-3">
+                {developers.map(([developer, data]) => (
+                  <div key={developer} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: data.color }}
+                        />
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                          {developer}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {data.subtasks.length} {data.subtasks.length === 1 ? 'subtask' : 'subtasks'}
+                        </Badge>
+                      </div>
+                      <span className="text-sm font-semibold text-[var(--color-warning-600)]">
+                        {data.totalHours > 0 ? `${data.totalHours.toFixed(1)}h` : 'No estimate'}
+                      </span>
+                    </div>
+                    
+                    <div className="pl-4 space-y-1">
+                      {data.subtasks.map(item => {
+                        const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+                        
+                        return (
+                          <div key={item.subtask.id} className="flex items-center justify-between py-1">
+                            <div className="flex items-center space-x-2 flex-1">
+                              <span className="text-xs text-[var(--color-text-muted)]">•</span>
+                              <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
+                                {item.parentName} - {item.subtask.name}
+                              </span>
+                              {item.subtask.status && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs"
+                                  style={{
+                                    borderColor: item.subtask.statusColor,
+                                    color: item.subtask.statusColor
+                                  }}
+                                >
+                                  {item.subtask.status}
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-[var(--color-text-muted)] ml-2">
+                              {displayHours > 0
+                                ? `${displayHours.toFixed(1)}h`
+                                : '-'
+                              }
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Summary */}
+                <div className="pt-3 mt-3 border-t border-[var(--color-border)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                      Total In Progress Hours
+                    </span>
+                    <span className="text-lg font-bold text-[var(--color-warning-600)]">
+                      {developers.reduce((sum, [_, data]) => sum + data.totalHours, 0).toFixed(1)}h
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </Card>
+
+      {/* Urgent Priority Tasks by Developer (excluding In Progress) */}
+      <Card className="p-4">
+        <div className="space-y-4">
+          <div
+            className="flex items-center justify-between cursor-pointer select-none"
+            onClick={() => setIsUrgentCollapsed(!isUrgentCollapsed)}
+          >
+            <div className="flex items-center space-x-2">
+              {isUrgentCollapsed ? (
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-secondary)]" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
+              )}
+              <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
+                Urgent Priority Tasks by Developer
+              </h3>
             </div>
-            <div>
-              <p className="text-lg font-semibold text-[var(--color-warning-600)]">
-                {inProgressTasks}
-              </p>
-              <p className="text-xs text-[var(--color-text-muted)]">In Progress</p>
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-[var(--color-text-secondary)]">
-                {totalTasks - completedTasks - inProgressTasks}
-              </p>
-              <p className="text-xs text-[var(--color-text-muted)]">To Do</p>
-            </div>
+            <Badge variant="error" className="text-xs">
+              Urgent Priority
+            </Badge>
           </div>
+          
+          {!isUrgentCollapsed && (() => {
+            // Collect all urgent subtasks (excluding in-progress) with their parent task names
+            const urgentSubtasks: Array<{
+              subtask: ProcessedTask;
+              parentName: string;
+              developer: string;
+              developerColor: string;
+            }> = [];
+            
+            // Filter urgent priority tasks and extract their subtasks (excluding in-progress subtasks)
+            tasks.forEach(task => {
+              if (task.priority?.name.toLowerCase() === 'urgent' && task.subtasks && task.subtasks.length > 0) {
+                task.subtasks.forEach(subtask => {
+                  // Check if the subtask itself is in progress
+                  const isSubtaskInProgress = subtask.status.toLowerCase().includes('progress') ||
+                                             subtask.status.toLowerCase().includes('active') ||
+                                             subtask.status.toLowerCase().includes('working');
+                  
+                  if (!isSubtaskInProgress) {
+                    urgentSubtasks.push({
+                      subtask,
+                      parentName: task.name,
+                      developer: subtask.developer || task.developer || 'Unassigned',
+                      developerColor: subtask.developerColor || task.developerColor || '#6B7280'
+                    });
+                  }
+                });
+              }
+            });
+            
+            // Group subtasks by developer
+            const subtasksByDeveloper = urgentSubtasks.reduce((acc, item) => {
+              const developer = item.developer;
+              if (!acc[developer]) {
+                acc[developer] = {
+                  subtasks: [],
+                  totalHours: 0,
+                  color: item.developerColor
+                };
+              }
+              acc[developer].subtasks.push(item);
+              
+              // Add subtask hours
+              const subtaskHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+              acc[developer].totalHours += subtaskHours;
+              
+              return acc;
+            }, {} as Record<string, { subtasks: typeof urgentSubtasks, totalHours: number, color: string }>);
+            
+            const developers = Object.entries(subtasksByDeveloper).sort((a, b) =>
+              b[1].totalHours - a[1].totalHours
+            );
+            
+            if (developers.length === 0) {
+              return (
+                <div className="text-center py-8 text-[var(--color-text-muted)]">
+                  No urgent priority subtasks found (excluding in-progress)
+                </div>
+              );
+            }
+            
+            return (
+              <div className="space-y-3">
+                {developers.map(([developer, data]) => (
+                  <div key={developer} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: data.color }}
+                        />
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                          {developer}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {data.subtasks.length} {data.subtasks.length === 1 ? 'subtask' : 'subtasks'}
+                        </Badge>
+                      </div>
+                      <span className="text-sm font-semibold text-[var(--color-error-600)]">
+                        {data.totalHours > 0 ? `${data.totalHours.toFixed(1)}h` : 'No estimate'}
+                      </span>
+                    </div>
+                    
+                    <div className="pl-4 space-y-1">
+                      {data.subtasks.map(item => {
+                        const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+                        
+                        return (
+                          <div key={item.subtask.id} className="flex items-center justify-between py-1">
+                            <div className="flex items-center space-x-2 flex-1">
+                              <span className="text-xs text-[var(--color-text-muted)]">•</span>
+                              <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
+                                {item.parentName} - {item.subtask.name}
+                              </span>
+                              {item.subtask.status && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs"
+                                  style={{
+                                    borderColor: item.subtask.statusColor,
+                                    color: item.subtask.statusColor
+                                  }}
+                                >
+                                  {item.subtask.status}
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-[var(--color-text-muted)] ml-2">
+                              {displayHours > 0
+                                ? `${displayHours.toFixed(1)}h`
+                                : '-'
+                              }
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Summary */}
+                <div className="pt-3 mt-3 border-t border-[var(--color-border)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                      Total Urgent Hours
+                    </span>
+                    <span className="text-lg font-bold text-[var(--color-error-600)]">
+                      {developers.reduce((sum, [_, data]) => sum + data.totalHours, 0).toFixed(1)}h
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </Card>
+
+      {/* High Priority Tasks by Developer (excluding In Progress) */}
+      <Card className="p-4">
+        <div className="space-y-4">
+          <div
+            className="flex items-center justify-between cursor-pointer select-none"
+            onClick={() => setIsHighCollapsed(!isHighCollapsed)}
+          >
+            <div className="flex items-center space-x-2">
+              {isHighCollapsed ? (
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-secondary)]" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
+              )}
+              <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
+                High Priority Tasks by Developer
+              </h3>
+            </div>
+            <Badge variant="warning" className="text-xs">
+              High Priority
+            </Badge>
+          </div>
+          
+          {!isHighCollapsed && (() => {
+            // Collect all high priority subtasks (excluding in-progress) with their parent task names
+            const highSubtasks: Array<{
+              subtask: ProcessedTask;
+              parentName: string;
+              developer: string;
+              developerColor: string;
+            }> = [];
+            
+            // Filter high priority tasks and extract their subtasks (excluding in-progress subtasks)
+            tasks.forEach(task => {
+              if (task.priority?.name.toLowerCase() === 'high' && task.subtasks && task.subtasks.length > 0) {
+                task.subtasks.forEach(subtask => {
+                  // Check if the subtask itself is in progress
+                  const isSubtaskInProgress = subtask.status.toLowerCase().includes('progress') ||
+                                             subtask.status.toLowerCase().includes('active') ||
+                                             subtask.status.toLowerCase().includes('working');
+                  
+                  if (!isSubtaskInProgress) {
+                    highSubtasks.push({
+                      subtask,
+                      parentName: task.name,
+                      developer: subtask.developer || task.developer || 'Unassigned',
+                      developerColor: subtask.developerColor || task.developerColor || '#6B7280'
+                    });
+                  }
+                });
+              }
+            });
+            
+            // Group subtasks by developer
+            const subtasksByDeveloper = highSubtasks.reduce((acc, item) => {
+              const developer = item.developer;
+              if (!acc[developer]) {
+                acc[developer] = {
+                  subtasks: [],
+                  totalHours: 0,
+                  color: item.developerColor
+                };
+              }
+              acc[developer].subtasks.push(item);
+              
+              // Add subtask hours
+              const subtaskHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+              acc[developer].totalHours += subtaskHours;
+              
+              return acc;
+            }, {} as Record<string, { subtasks: typeof highSubtasks, totalHours: number, color: string }>);
+            
+            const developers = Object.entries(subtasksByDeveloper).sort((a, b) =>
+              b[1].totalHours - a[1].totalHours
+            );
+            
+            if (developers.length === 0) {
+              return (
+                <div className="text-center py-8 text-[var(--color-text-muted)]">
+                  No high priority subtasks found (excluding in-progress)
+                </div>
+              );
+            }
+            
+            return (
+              <div className="space-y-3">
+                {developers.map(([developer, data]) => (
+                  <div key={developer} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: data.color }}
+                        />
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                          {developer}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {data.subtasks.length} {data.subtasks.length === 1 ? 'subtask' : 'subtasks'}
+                        </Badge>
+                      </div>
+                      <span className="text-sm font-semibold text-[var(--color-warning-600)]">
+                        {data.totalHours > 0 ? `${data.totalHours.toFixed(1)}h` : 'No estimate'}
+                      </span>
+                    </div>
+                    
+                    <div className="pl-4 space-y-1">
+                      {data.subtasks.map(item => {
+                        const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+                        
+                        return (
+                          <div key={item.subtask.id} className="flex items-center justify-between py-1">
+                            <div className="flex items-center space-x-2 flex-1">
+                              <span className="text-xs text-[var(--color-text-muted)]">•</span>
+                              <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
+                                {item.parentName} - {item.subtask.name}
+                              </span>
+                              {item.subtask.status && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs"
+                                  style={{
+                                    borderColor: item.subtask.statusColor,
+                                    color: item.subtask.statusColor
+                                  }}
+                                >
+                                  {item.subtask.status}
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-[var(--color-text-muted)] ml-2">
+                              {displayHours > 0
+                                ? `${displayHours.toFixed(1)}h`
+                                : '-'
+                              }
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Summary */}
+                <div className="pt-3 mt-3 border-t border-[var(--color-border)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                      Total High Priority Hours
+                    </span>
+                    <span className="text-lg font-bold text-[var(--color-warning-600)]">
+                      {developers.reduce((sum, [_, data]) => sum + data.totalHours, 0).toFixed(1)}h
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </Card>
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Filter, ChevronDown } from 'lucide-react';
+import { X, Filter, ChevronDown, Search } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,8 @@ interface FilterBarProps {
   activeFilters: Record<string, string[]>;
   onFilterChange: (groupId: string, values: string[]) => void;
   onClearAll: () => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   className?: string;
 }
 
@@ -178,46 +180,37 @@ const FilterBar: React.FC<FilterBarProps> = ({
   activeFilters,
   onFilterChange,
   onClearAll,
+  searchQuery = '',
+  onSearchChange,
   className
 }) => {
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
   const totalActiveFilters = Object.values(activeFilters).flat().length;
 
-  // Quick filter chips for common filters
-  const quickFilters = [
-    { id: 'high-priority', label: 'High Priority', variant: 'priority' as const },
-    { id: 'in-progress', label: 'In Progress', variant: 'status' as const },
-    { id: 'overdue', label: 'Overdue', variant: 'priority' as const },
-    { id: 'assigned-to-me', label: 'Assigned to Me', variant: 'assignee' as const },
-  ];
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocalSearchQuery(value);
+    onSearchChange?.(value);
+  };
 
   return (
     <div className={cn("space-y-3", className)}>
-      {/* Quick Filters */}
+      {/* Search and Filters Row */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-[var(--color-text-secondary)] mr-2">
-          Quick Filters:
-        </span>
-        {quickFilters.map((filter) => (
-          <FilterChip
-            key={filter.id}
-            label={filter.label}
-            variant={filter.variant}
-            isActive={false} // This would be connected to actual filter state
-            onClick={() => {
-              // Handle quick filter click
-              console.log('Quick filter clicked:', filter.id);
-            }}
+        {/* Search Input */}
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
+          <input
+            type="text"
+            value={localSearchQuery}
+            onChange={handleSearchChange}
+            placeholder="Search tasks and subtasks..."
+            className="w-full pl-10 pr-4 py-2 text-sm border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent"
           />
-        ))}
-      </div>
-
-      {/* Advanced Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-[var(--color-text-secondary)] mr-2">
-          Filters:
-        </span>
+        </div>
         
-        {filterGroups.map((group) => (
+        {/* Filter Dropdowns - excluding Status */}
+        {filterGroups.filter(group => group.id !== 'status').map((group) => (
           <FilterDropdown
             key={group.id}
             group={group}
@@ -239,11 +232,26 @@ const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       {/* Active Filter Tags */}
-      {totalActiveFilters > 0 && (
+      {(totalActiveFilters > 0 || localSearchQuery) && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-[var(--color-text-secondary)] mr-2">
             Active:
           </span>
+          
+          {/* Search Query Tag */}
+          {localSearchQuery && (
+            <FilterChip
+              label={`Search: "${localSearchQuery}"`}
+              isActive={true}
+              onClick={() => {}}
+              onRemove={() => {
+                setLocalSearchQuery('');
+                onSearchChange?.('');
+              }}
+            />
+          )}
+          
+          {/* Filter Tags */}
           {Object.entries(activeFilters).map(([groupId, values]) =>
             values.map((value) => {
               const group = filterGroups.find(g => g.id === groupId);
