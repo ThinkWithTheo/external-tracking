@@ -8,14 +8,16 @@ interface TaskRowProps {
   task: ProcessedTask;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  onTaskClick?: (taskId: string) => void;
   level?: number;
 }
 
-const TaskRow: React.FC<TaskRowProps> = ({ 
-  task, 
-  isExpanded = false, 
+const TaskRow: React.FC<TaskRowProps> = ({
+  task,
+  isExpanded = false,
   onToggleExpand,
-  level = 0 
+  onTaskClick,
+  level = 0
 }) => {
   const formatTimeEstimate = (timeInMs?: number): string => {
     if (!timeInMs) return '—';
@@ -89,12 +91,14 @@ const TaskRow: React.FC<TaskRowProps> = ({
             )}
             
             {/* Task Name */}
-            <span 
+            <span
               className={`
                 truncate text-sm
                 ${task.isSubtask ? 'text-gray-700' : 'text-gray-900 font-medium'}
+                ${onTaskClick ? 'cursor-pointer hover:text-blue-600 transition-colors' : ''}
               `}
               title={task.name}
+              onClick={onTaskClick ? () => onTaskClick(task.id) : undefined}
             >
               {task.name}
             </span>
@@ -162,6 +166,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
             <TaskRow
               key={subtask.id}
               task={subtask}
+              onTaskClick={onTaskClick}
               level={level + 1}
             />
           ))}

@@ -175,8 +175,44 @@ The [`/web-app`](web-app/) directory contains a **fully operational** Next.js ap
 - **✅ Accessibility Compliant**: WCAG guidelines with proper focus management
 - **✅ Priority System**: Full support for all 5 priority levels (Urgent, High, Normal, Low, None)
 - **✅ Smart Hour Calculation**: Hours tracked from subtasks only, preventing double-counting
+- **✅ Task Update Modal**: Click any task to edit its details with pre-filled data
+- **✅ Change Tracking System**: All task operations logged to markdown file for AI review
 
 ### 🎨 Latest Updates (January 2025)
+
+#### **Task Update Functionality (NEW)**
+- **Click-to-Edit Tasks**: Click on any task name across all sections to open the update modal
+  - Works in "In Progress Tasks by Developer" section
+  - Works in "Urgent Priority Tasks by Developer" section
+  - Works in "High Priority Tasks by Developer" section
+  - Works in main Tasks table (both card and table views)
+- **Update Modal Features**:
+  - Pre-fills all current task data from ClickUp
+  - Same fields as Create modal (name, description, status, priority, due date, time estimate, developer, comments)
+  - Only sends changed fields to API for efficiency
+  - Handles developer field stored as numeric orderindex
+  - Does NOT move tasks to different parent
+- **Change Tracking System**:
+  - All CREATE and UPDATE operations logged to `/web-app/logs/task-changes.md`
+  - Format optimized for LLM readability
+  - Includes timestamp, task ID, changed fields, and comments
+  - Example format:
+    ```markdown
+    ## UPDATE Task 86b6pf2an - 2025-01-15T23:00:00.000Z
+      - name: "Updated task name"
+      - status: "IN PROGRESS"
+    Comment: Updated via web interface
+    ```
+- **UI Improvements**:
+  - Fixed text overflow with proper truncation and ellipsis
+  - Removed redundant status badges from "In Progress" section
+  - Right-aligned status badges in priority sections
+  - Added tooltips for long task names
+- **Bug Fixes**:
+  - Fixed priority sections to filter by subtask priority (not parent)
+  - Fixed developer field display when stored as orderindex number
+  - Fixed Next.js 15 async params warning
+  - Fixed priority mapping to use correct ClickUp IDs
 
 #### **ClickUp API Enhancements**
 - **Pagination Support**: API now fetches ALL tasks using pagination (not limited to first 100)

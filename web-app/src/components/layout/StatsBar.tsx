@@ -10,6 +10,7 @@ import { ProcessedTask } from '@/types/clickup';
 
 interface StatsBarProps {
   tasks: ProcessedTask[];
+  onTaskClick?: (taskId: string) => void;
   className?: string;
 }
 
@@ -100,7 +101,7 @@ const StatCard: React.FC<StatCardProps> = ({
   );
 };
 
-const StatsBar: React.FC<StatsBarProps> = ({ tasks, className }) => {
+const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) => {
   // State for collapsible sections
   const [isUrgentCollapsed, setIsUrgentCollapsed] = useState(true);
   const [isHighCollapsed, setIsHighCollapsed] = useState(true);
@@ -288,26 +289,18 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, className }) => {
                         const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
                         
                         return (
-                          <div key={item.subtask.id} className="flex items-center justify-between py-1">
-                            <div className="flex items-center space-x-2 flex-1">
-                              <span className="text-xs text-[var(--color-text-muted)]">•</span>
-                              <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
+                          <div key={item.subtask.id} className="flex items-center justify-between py-1 gap-2">
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                              <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">•</span>
+                              <span
+                                className={`text-xs text-[var(--color-text-secondary)] truncate block ${onTaskClick ? 'cursor-pointer hover:text-[var(--color-primary-600)] transition-colors' : ''}`}
+                                onClick={onTaskClick ? () => onTaskClick(item.subtask.id) : undefined}
+                                title={`${item.parentName} - ${item.subtask.name}`}
+                              >
                                 {item.parentName} - {item.subtask.name}
                               </span>
-                              {item.subtask.status && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs"
-                                  style={{
-                                    borderColor: item.subtask.statusColor,
-                                    color: item.subtask.statusColor
-                                  }}
-                                >
-                                  {item.subtask.status}
-                                </Badge>
-                              )}
                             </div>
-                            <span className="text-xs text-[var(--color-text-muted)] ml-2">
+                            <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">
                               {displayHours > 0
                                 ? `${displayHours.toFixed(1)}h`
                                 : '-'
@@ -368,16 +361,19 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, className }) => {
               developerColor: string;
             }> = [];
             
-            // Filter urgent priority tasks and extract their subtasks (excluding in-progress subtasks)
+            // Filter subtasks with urgent priority (excluding in-progress subtasks)
             tasks.forEach(task => {
-              if (task.priority?.name.toLowerCase() === 'urgent' && task.subtasks && task.subtasks.length > 0) {
+              if (task.subtasks && task.subtasks.length > 0) {
                 task.subtasks.forEach(subtask => {
+                  // Check if the SUBTASK has urgent priority
+                  const isUrgent = subtask.priority?.name.toLowerCase() === 'urgent';
+                  
                   // Check if the subtask itself is in progress
                   const isSubtaskInProgress = subtask.status.toLowerCase().includes('progress') ||
                                              subtask.status.toLowerCase().includes('active') ||
                                              subtask.status.toLowerCase().includes('working');
                   
-                  if (!isSubtaskInProgress) {
+                  if (isUrgent && !isSubtaskInProgress) {
                     urgentSubtasks.push({
                       subtask,
                       parentName: task.name,
@@ -447,12 +443,18 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, className }) => {
                         const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
                         
                         return (
-                          <div key={item.subtask.id} className="flex items-center justify-between py-1">
-                            <div className="flex items-center space-x-2 flex-1">
-                              <span className="text-xs text-[var(--color-text-muted)]">•</span>
-                              <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
+                          <div key={item.subtask.id} className="flex items-center justify-between py-1 gap-2">
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                              <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">•</span>
+                              <span
+                                className={`text-xs text-[var(--color-text-secondary)] truncate block ${onTaskClick ? 'cursor-pointer hover:text-[var(--color-primary-600)] transition-colors' : ''}`}
+                                onClick={onTaskClick ? () => onTaskClick(item.subtask.id) : undefined}
+                                title={`${item.parentName} - ${item.subtask.name}`}
+                              >
                                 {item.parentName} - {item.subtask.name}
                               </span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
                               {item.subtask.status && (
                                 <Badge
                                   variant="outline"
@@ -465,13 +467,13 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, className }) => {
                                   {item.subtask.status}
                                 </Badge>
                               )}
+                              <span className="text-xs text-[var(--color-text-muted)]">
+                                {displayHours > 0
+                                  ? `${displayHours.toFixed(1)}h`
+                                  : '-'
+                                }
+                              </span>
                             </div>
-                            <span className="text-xs text-[var(--color-text-muted)] ml-2">
-                              {displayHours > 0
-                                ? `${displayHours.toFixed(1)}h`
-                                : '-'
-                              }
-                            </span>
                           </div>
                         );
                       })}
@@ -527,16 +529,19 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, className }) => {
               developerColor: string;
             }> = [];
             
-            // Filter high priority tasks and extract their subtasks (excluding in-progress subtasks)
+            // Filter subtasks with high priority (excluding in-progress subtasks)
             tasks.forEach(task => {
-              if (task.priority?.name.toLowerCase() === 'high' && task.subtasks && task.subtasks.length > 0) {
+              if (task.subtasks && task.subtasks.length > 0) {
                 task.subtasks.forEach(subtask => {
+                  // Check if the SUBTASK has high priority
+                  const isHigh = subtask.priority?.name.toLowerCase() === 'high';
+                  
                   // Check if the subtask itself is in progress
                   const isSubtaskInProgress = subtask.status.toLowerCase().includes('progress') ||
                                              subtask.status.toLowerCase().includes('active') ||
                                              subtask.status.toLowerCase().includes('working');
                   
-                  if (!isSubtaskInProgress) {
+                  if (isHigh && !isSubtaskInProgress) {
                     highSubtasks.push({
                       subtask,
                       parentName: task.name,
@@ -606,12 +611,18 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, className }) => {
                         const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
                         
                         return (
-                          <div key={item.subtask.id} className="flex items-center justify-between py-1">
-                            <div className="flex items-center space-x-2 flex-1">
-                              <span className="text-xs text-[var(--color-text-muted)]">•</span>
-                              <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
+                          <div key={item.subtask.id} className="flex items-center justify-between py-1 gap-2">
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                              <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">•</span>
+                              <span
+                                className={`text-xs text-[var(--color-text-secondary)] truncate block ${onTaskClick ? 'cursor-pointer hover:text-[var(--color-primary-600)] transition-colors' : ''}`}
+                                onClick={onTaskClick ? () => onTaskClick(item.subtask.id) : undefined}
+                                title={`${item.parentName} - ${item.subtask.name}`}
+                              >
                                 {item.parentName} - {item.subtask.name}
                               </span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
                               {item.subtask.status && (
                                 <Badge
                                   variant="outline"
@@ -624,13 +635,13 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, className }) => {
                                   {item.subtask.status}
                                 </Badge>
                               )}
+                              <span className="text-xs text-[var(--color-text-muted)]">
+                                {displayHours > 0
+                                  ? `${displayHours.toFixed(1)}h`
+                                  : '-'
+                                }
+                              </span>
                             </div>
-                            <span className="text-xs text-[var(--color-text-muted)] ml-2">
-                              {displayHours > 0
-                                ? `${displayHours.toFixed(1)}h`
-                                : '-'
-                              }
-                            </span>
                           </div>
                         );
                       })}

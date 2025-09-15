@@ -14,6 +14,7 @@ interface TaskListProps {
   tasks?: ProcessedTask[];
   activeFilters?: Record<string, string[]>;
   onCreateTask?: () => void;
+  onTaskClick?: (taskId: string) => void;
 }
 
 type ViewMode = 'cards' | 'table';
@@ -22,7 +23,8 @@ const TaskList: React.FC<TaskListProps> = ({
   className = '',
   tasks: propTasks,
   activeFilters,
-  onCreateTask
+  onCreateTask,
+  onTaskClick
 }) => {
   const [internalTasks, setInternalTasks] = useState<ProcessedTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,6 +238,7 @@ const TaskList: React.FC<TaskListProps> = ({
             tasks={tasks}
             expandedTasks={expandedTasks}
             onToggleExpand={handleToggleExpand}
+            onTaskClick={onTaskClick}
           />
         ) : (
           <div className="space-y-0">
@@ -301,6 +304,7 @@ const TaskList: React.FC<TaskListProps> = ({
                     task={task}
                     isExpanded={expandedTasks.has(task.id)}
                     onToggleExpand={() => handleToggleExpand(task.id)}
+                    onTaskClick={onTaskClick}
                   />
                 ))
               )}

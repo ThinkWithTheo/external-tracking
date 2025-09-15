@@ -11,6 +11,7 @@ import {
   ClickUpStatus,
   ClickUpCustomField,
   TaskCreateData,
+  TaskUpdateData,
   ApiError
 } from '@/types/clickup';
 
@@ -568,6 +569,47 @@ class ClickUpAPI {
         throw new Error('Access denied. Please check your ClickUp permissions for this list.');
       } else {
         throw new Error(`Failed to create task in ClickUp: ${apiError.message}`);
+      }
+    }
+  }
+
+  /**
+   * Update an existing task in ClickUp
+   * @param taskId - The ID of the task to update
+   * @param updateData - Task update data
+   * @returns Promise<ClickUpTask>
+   */
+  async updateTask(taskId: string, updateData: TaskUpdateData): Promise<ClickUpTask> {
+    try {
+      console.log('Updating task with data:', updateData);
+      
+      const response = await this.retryRequest(() =>
+        this.client.put<ClickUpTask>(`/task/${taskId}`, updateData)
+      );
+
+      console.log('Task updated successfully:', response.data);
+      return response.data;
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      console.error('Error updating task in ClickUp:', {
+        message: apiError.message,
+        status: apiError.response?.status,
+        statusText: apiError.response?.statusText,
+        data: apiError.response?.data,
+        taskId,
+      });
+      
+      if (apiError.response?.status === 400) {
+        const errorData = apiError.response?.data as { err?: string };
+        throw new Error(`Invalid task data. Please check your input: ${errorData?.err || apiError.message}`);
+      } else if (apiError.response?.status === 401) {
+        throw new Error('Invalid ClickUp API token. Please check your credentials.');
+      } else if (apiError.response?.status === 403) {
+        throw new Error('Access denied. Please check your ClickUp permissions for this task.');
+      } else if (apiError.response?.status === 404) {
+        throw new Error('Task not found. It may have been deleted.');
+      } else {
+        throw new Error(`Failed to update task in ClickUp: ${apiError.message}`);
       }
     }
   }

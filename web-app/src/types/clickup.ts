@@ -265,6 +265,22 @@ export interface TaskCreateData {
   developer?: string;
 }
 
+export interface TaskUpdateData {
+  name?: string;
+  description?: string;
+  status?: string;
+  priority?: number;
+  due_date?: number;
+  time_estimate?: number;
+  assignees?: number[];
+  custom_fields?: Array<{
+    id: string;
+    value: unknown;
+  }>;
+  developer?: string;
+  comment?: string;
+}
+
 export interface ApiError {
   message: string;
   response?: {

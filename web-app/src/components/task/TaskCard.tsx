@@ -15,6 +15,7 @@ interface TaskCardProps {
   task: ProcessedTask;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  onTaskClick?: (taskId: string) => void;
   className?: string;
   style?: React.CSSProperties;
   hideSubtasks?: boolean;
@@ -24,6 +25,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
   task,
   isExpanded = false,
   onToggleExpand,
+  onTaskClick,
   className,
   style,
   hideSubtasks = false
@@ -279,6 +281,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                   >
                     <TaskCard
                       task={subtask}
+                      onTaskClick={onTaskClick}
                       className="bg-[var(--color-surface)] border-[var(--color-border)] shadow-sm hover:shadow-md transition-shadow h-full"
                     />
                   </motion.div>
@@ -298,6 +301,7 @@ interface TaskGridProps {
   tasks: ProcessedTask[];
   expandedTasks: Set<string>;
   onToggleExpand: (taskId: string) => void;
+  onTaskClick?: (taskId: string) => void;
   className?: string;
 }
 
@@ -305,6 +309,7 @@ const TaskGrid: React.FC<TaskGridProps> = ({
   tasks,
   expandedTasks,
   onToggleExpand,
+  onTaskClick,
   className
 }) => {
   if (tasks.length === 0) {

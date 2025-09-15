@@ -7,8 +7,9 @@ import Header from '@/components/layout/Header';
 import StatsBar from '@/components/layout/StatsBar';
 import FilterBar, { FilterGroup } from '@/components/layout/FilterBar';
 import CreateTaskModal from '@/components/task/CreateTaskModal';
+import UpdateTaskModal from '@/components/task/UpdateTaskModal';
 import { PageTransition, FadeIn, SlideIn } from '@/components/animations/PageTransition';
-import { ProcessedTask } from '@/types/clickup';
+import { ProcessedTask, ClickUpTask } from '@/types/clickup';
 
 export default function Home() {
   const [tasks, setTasks] = useState<ProcessedTask[]>([]);
@@ -16,6 +17,8 @@ export default function Home() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<ClickUpTask | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch tasks function
@@ -133,6 +136,30 @@ export default function Home() {
     fetchTasks();
   };
 
+  const handleTaskClick = async (taskId: string) => {
+    try {
+      // Fetch the full task details from ClickUp
+      const response = await fetch(`/api/tasks/${taskId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedTask(data.task);
+        setIsUpdateModalOpen(true);
+      }
+    } catch (error) {
+      console.error('Error fetching task details:', error);
+    }
+  };
+
+  const handleCloseUpdateModal = () => {
+    setIsUpdateModalOpen(false);
+    setSelectedTask(null);
+  };
+
+  const handleTaskUpdated = () => {
+    // Refresh the task list after updating a task
+    fetchTasks();
+  };
+
   // Filter tasks and their subtasks based on search query and active filters
   // Filters are applied cumulatively (AND logic) - subtasks must match ALL active filters
   const filteredTasks = tasks.map(task => {
@@ -215,7 +242,7 @@ export default function Home() {
         <AnimatePresence>
           {!loading && tasks.length > 0 && (
             <SlideIn direction="up" delay={0.1}>
-              <StatsBar tasks={tasks} />
+              <StatsBar tasks={tasks} onTaskClick={handleTaskClick} />
             </SlideIn>
           )}
         </AnimatePresence>
@@ -250,6 +277,7 @@ export default function Home() {
               tasks={loading ? undefined : filteredTasks}
               activeFilters={activeFilters}
               onCreateTask={handleCreateTask}
+              onTaskClick={handleTaskClick}
             />
           </motion.div>
         </SlideIn>
@@ -276,6 +304,14 @@ export default function Home() {
         isOpen={isCreateModalOpen}
         onClose={handleCloseCreateModal}
         onTaskCreated={handleTaskCreated}
+      />
+
+      {/* Update Task Modal */}
+      <UpdateTaskModal
+        isOpen={isUpdateModalOpen}
+        onClose={handleCloseUpdateModal}
+        onTaskUpdated={handleTaskUpdated}
+        task={selectedTask}
       />
     </PageTransition>
   );

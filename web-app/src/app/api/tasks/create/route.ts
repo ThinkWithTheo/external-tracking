@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clickupAPI } from '@/lib/clickup-api';
 import { ClickUpCustomField, ClickUpTask, TaskCreateData } from '@/types/clickup';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
+// Helper function to log changes to markdown file
+async function logChangeToMarkdown(taskId: string, taskData: Partial<TaskCreateData>, action: 'CREATE' | 'UPDATE' = 'CREATE') {
+  try {
+    const logDir = path.join(process.cwd(), 'logs');
+    const logFile = path.join(logDir, 'task-changes.md');
+    
+    // Create logs directory if it doesn't exist
+    await fs.mkdir(logDir, { recursive: true });
+    
+    // Format the log entry
+    const timestamp = new Date().toISOString();
+    const changesList = Object.entries(taskData)
+      .filter(([key]) => key !== 'custom_fields' && key !== 'parent') // Don't log internal fields
+      .map(([key, value]) => `  - ${key}: ${JSON.stringify(value)}`)
+      .join('\n');
+    
+    const logEntry = `\n## ${action} Task ${taskId} - ${timestamp}\n${changesList}\n`;
+    
+    // Append to file (create if doesn't exist)
+    await fs.appendFile(logFile, logEntry, 'utf8');
+  } catch (error) {
+    console.error('Error logging to markdown:', error);
+    // Don't throw - logging failure shouldn't break the API
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,6 +89,9 @@ export async function POST(request: NextRequest) {
 
     // Create the task using ClickUp API
     const newTask = await clickupAPI.createTask(taskData);
+
+    // Log the new task creation
+    await logChangeToMarkdown(newTask.id, body, 'CREATE');
 
     return NextResponse.json({
       success: true,
