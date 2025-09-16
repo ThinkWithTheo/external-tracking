@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import { clickupAPI } from '@/lib/clickup-api';
+import { getAllLogs } from '@/lib/blob-logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -105,16 +104,12 @@ export async function GET(request: NextRequest) {
     const lastStandupTime = getLastStandupTime(now);
     const lastStandupTimeUTC = lastStandupTime.toISOString();
     
-    // Get log file content
-    const isVercel = process.env.VERCEL === '1';
-    const logDir = isVercel ? '/tmp' : path.join(process.cwd(), 'logs');
-    const logFile = path.join(logDir, 'task-changes.md');
-    
+    // Get log file content from blob or local
     let logContent = '';
     let recentLogContent = '';
     
     try {
-      const fullLog = await fs.readFile(logFile, 'utf8');
+      const fullLog = await getAllLogs();
       const lines = fullLog.split('\n');
       
       // Get logs since last standup

@@ -22,3 +22,10 @@ The format is optimized for LLM readability while keeping the file size minimal.
 
 ## UPDATE Task 86b6pd4f3 - 2025-09-16T18:59:37.724Z
   - status: "CLOSED"
+
+## CREATE Task TEST-1758055226796 - 2025-09-16T20:40:26.796Z
+  - name: "Test Task for Storage Verification"
+  - description: "This is a test entry to verify blob storage is working"
+  - status: "TEST"
+  - timestamp: "2025-09-16T20:40:26.796Z"
+Comment: Test log created at 2025-09-16T20:40:26.796Z

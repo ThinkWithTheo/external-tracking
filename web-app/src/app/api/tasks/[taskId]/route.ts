@@ -1,36 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clickupAPI } from '@/lib/clickup-api';
 import { ClickUpCustomField, TaskUpdateData } from '@/types/clickup';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-
-// Helper function to log changes to markdown file
-async function logChangeToMarkdown(taskId: string, changes: Partial<TaskUpdateData>, action: 'UPDATE' | 'CREATE' = 'UPDATE') {
-  try {
-    // Use /tmp directory on Vercel (serverless environment)
-    const isVercel = process.env.VERCEL === '1';
-    const logDir = isVercel ? '/tmp' : path.join(process.cwd(), 'logs');
-    const logFile = path.join(logDir, 'task-changes.md');
-    
-    // Create logs directory if it doesn't exist
-    await fs.mkdir(logDir, { recursive: true });
-    
-    // Format the log entry
-    const timestamp = new Date().toISOString();
-    const changesList = Object.entries(changes)
-      .filter(([key]) => key !== 'comment') // Don't log comments in the change list
-      .map(([key, value]) => `  - ${key}: ${JSON.stringify(value)}`)
-      .join('\n');
-    
-    const logEntry = `\n## ${action} Task ${taskId} - ${timestamp}\n${changesList}\n${changes.comment ? `Comment: ${changes.comment}\n` : ''}`;
-    
-    // Append to file (create if doesn't exist)
-    await fs.appendFile(logFile, logEntry, 'utf8');
-  } catch (error) {
-    console.error('Error logging to markdown:', error);
-    // Don't throw - logging failure shouldn't break the API
-  }
-}
+import { logTaskChange } from '@/lib/blob-logger';
 
 export async function PUT(
   request: NextRequest,
@@ -91,7 +62,7 @@ export async function PUT(
     }
 
     // Log the change before making the API call
-    await logChangeToMarkdown(taskId, body, 'UPDATE');
+    await logTaskChange(taskId, body, 'UPDATE', body.comment);
 
     // Update the task using ClickUp API
     const updatedTask = await clickupAPI.updateTask(taskId, updateData);
