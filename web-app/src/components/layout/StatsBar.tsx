@@ -37,13 +37,13 @@ const StatCard: React.FC<StatCardProps> = ({
   const getVariantStyles = (variant: string) => {
     switch (variant) {
       case 'success':
-        return 'border-[var(--color-success-200)] bg-gradient-to-br from-[var(--color-success-50)] to-[var(--color-surface)]';
+        return 'border-[var(--color-success-200)] bg-gradient-to-br from-[var(--color-success-50)] to-[var(--color-surface)] dark:bg-[var(--color-surface)] dark:border-[var(--color-success-700)]';
       case 'warning':
-        return 'border-[var(--color-warning-200)] bg-gradient-to-br from-[var(--color-warning-50)] to-[var(--color-surface)]';
+        return 'border-[var(--color-warning-200)] bg-gradient-to-br from-[var(--color-warning-50)] to-[var(--color-surface)] dark:bg-[var(--color-surface)] dark:border-[var(--color-warning-700)]';
       case 'error':
-        return 'border-[var(--color-error-200)] bg-gradient-to-br from-[var(--color-error-50)] to-[var(--color-surface)]';
+        return 'border-[var(--color-error-200)] bg-gradient-to-br from-[var(--color-error-50)] to-[var(--color-surface)] dark:bg-[var(--color-surface)] dark:border-[var(--color-error-700)]';
       default:
-        return 'border-[var(--color-primary-200)] bg-gradient-to-br from-[var(--color-primary-50)] to-[var(--color-surface)]';
+        return 'border-[var(--color-primary-200)] bg-gradient-to-br from-[var(--color-primary-50)] to-[var(--color-surface)] dark:bg-[var(--color-surface)] dark:border-[var(--color-primary-700)]';
     }
   };
 
@@ -64,7 +64,7 @@ const StatCard: React.FC<StatCardProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-lg bg-white/50",
+            "flex h-10 w-10 items-center justify-center rounded-lg bg-white/50 dark:bg-[var(--color-surface-hover)]",
             getIconColor(variant)
           )}>
             {icon}

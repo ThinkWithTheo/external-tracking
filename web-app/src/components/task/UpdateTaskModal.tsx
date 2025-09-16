@@ -155,11 +155,50 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         }
       }
 
+      // Normalize the status value to match dropdown options
+      // ClickUp might return status in different casing, so we need to normalize it
+      let statusValue = task.status?.status || '';
+      
+      // Map common status variations to our standard format
+      const statusMap: Record<string, string> = {
+        'open': 'OPEN',
+        'in progress': 'IN PROGRESS',
+        'in_progress': 'IN PROGRESS',
+        'inprogress': 'IN PROGRESS',
+        'in review': 'IN REVIEW',
+        'in_review': 'IN REVIEW',
+        'inreview': 'IN REVIEW',
+        'blocked': 'BLOCKED',
+        'wont do': 'WONT DO',
+        'wont_do': 'WONT DO',
+        'wontdo': 'WONT DO',
+        'closed': 'CLOSED',
+        'complete': 'CLOSED',
+        'done': 'CLOSED'
+      };
+      
+      // Try to find a matching status in our map (case-insensitive)
+      const normalizedStatus = statusValue.toLowerCase().trim();
+      if (statusMap[normalizedStatus]) {
+        statusValue = statusMap[normalizedStatus];
+      } else {
+        // If not in map, try to match with our default statuses (case-insensitive)
+        const matchingStatus = defaultStatuses.find(
+          s => s.status.toLowerCase() === normalizedStatus
+        );
+        if (matchingStatus) {
+          statusValue = matchingStatus.status;
+        } else {
+          // As a fallback, convert to uppercase which is our standard format
+          statusValue = statusValue.toUpperCase();
+        }
+      }
+
       // Set form data with task values
       const taskFormData: TaskFormData = {
         name: task.name || '',
         description: task.description || '',
-        status: task.status?.status || '',
+        status: statusValue,
         priority: priorityValue,
         dueDate: dueDateString,
         timeEstimate: timeEstimateHours,

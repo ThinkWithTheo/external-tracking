@@ -71,26 +71,39 @@ export async function GET(request: NextRequest) {
     
     // Analyze tasks
     const now = new Date();
+    const nowUTC = now.toISOString();
     
-    // Calculate last business day for log filtering
-    const getLastBusinessDay = (date: Date): Date => {
+    // Calculate last standup time (10 AM CST = 3 PM UTC or 4 PM UTC depending on DST)
+    const getLastStandupTime = (date: Date): Date => {
       const day = date.getDay();
-      const lastBizDay = new Date(date);
+      const lastStandup = new Date(date);
       
-      if (day === 0) { // Sunday
-        lastBizDay.setDate(date.getDate() - 2); // Friday
-      } else if (day === 1) { // Monday
-        lastBizDay.setDate(date.getDate() - 3); // Friday
-      } else {
-        lastBizDay.setDate(date.getDate() - 1); // Previous day
+      // Determine if we need to look at today's or yesterday's standup
+      const currentHour = date.getUTCHours();
+      
+      // 10 AM CST = 4 PM UTC (during CST) or 3 PM UTC (during CDT)
+      // For simplicity, we'll use 3 PM UTC (CDT) as the cutoff since it's currently CDT
+      const standupHourUTC = 15; // 3 PM UTC = 10 AM CDT
+      
+      if (currentHour < standupHourUTC) {
+        // Before today's standup, look at previous business day's standup
+        if (day === 0) { // Sunday
+          lastStandup.setUTCDate(date.getUTCDate() - 2); // Friday
+        } else if (day === 1) { // Monday
+          lastStandup.setUTCDate(date.getUTCDate() - 3); // Friday
+        } else {
+          lastStandup.setUTCDate(date.getUTCDate() - 1); // Previous day
+        }
       }
+      // else: After today's standup, use today
       
-      // Set to 8 AM of that day
-      lastBizDay.setHours(8, 0, 0, 0);
-      return lastBizDay;
+      // Set to standup time (10 AM CST/CDT = 3 PM UTC during CDT, 4 PM UTC during CST)
+      lastStandup.setUTCHours(standupHourUTC, 0, 0, 0);
+      return lastStandup;
     };
     
-    const lastBusinessDay = getLastBusinessDay(now);
+    const lastStandupTime = getLastStandupTime(now);
+    const lastStandupTimeUTC = lastStandupTime.toISOString();
     
     // Get log file content
     const isVercel = process.env.VERCEL === '1';
@@ -104,7 +117,7 @@ export async function GET(request: NextRequest) {
       const fullLog = await fs.readFile(logFile, 'utf8');
       const lines = fullLog.split('\n');
       
-      // Get logs since last business day
+      // Get logs since last standup
       const recentLines: string[] = [];
       let captureRecent = false;
       
@@ -114,7 +127,7 @@ export async function GET(request: NextRequest) {
           const timestampMatch = line.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
           if (timestampMatch) {
             const logDate = new Date(timestampMatch[1]);
-            captureRecent = logDate >= lastBusinessDay;
+            captureRecent = logDate >= lastStandupTime;
           }
         }
         
@@ -123,7 +136,7 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      recentLogContent = recentLines.length > 0 ? recentLines.join('\n') : 'No changes since last business day.';
+      recentLogContent = recentLines.length > 0 ? recentLines.join('\n') : 'No changes since last standup.';
       
       // Also keep last 1000 lines for full context
       const last1000Lines = lines.slice(-1000).join('\n');
@@ -228,19 +241,29 @@ export async function GET(request: NextRequest) {
 
     // Generate the markdown report
     const report = `# Daily Standup Task Analysis Report
-Generated: ${now.toISOString()}
+Generated: ${nowUTC}
+Current Time (UTC): ${nowUTC}
+Current Time (CST/CDT): ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
+Daily Standup Time: 10:00 AM CST/CDT (15:00 UTC during CDT, 16:00 UTC during CST)
+Last Standup: ${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
 
 ## PROMPT FOR DAILY STANDUP ANALYSIS
 
-You are analyzing a software development team's task management data for their ${now.toLocaleDateString('en-US', { weekday: 'long' })} morning standup meeting.
+You are analyzing a software development team's task management data for their ${now.toLocaleDateString('en-US', { weekday: 'long' })} morning standup meeting at 10 AM CST/CDT.
+
+**IMPORTANT CONTEXT:**
+- The current report was generated at: ${nowUTC}
+- Your daily standup is at 10:00 AM CST/CDT (which is 15:00 UTC during CDT, 16:00 UTC during CST)
+- The logs below show changes since the last standup at: ${lastStandupTimeUTC}
+- All timestamps in the logs are in UTC format (ISO 8601)
 
 **IMPORTANT: Review the COMPLETE TASK TABLE and the DAILY REVIEW section below. These are your primary data sources.**
 
 Based on the data, please provide:
 
 ### 1. DAILY REVIEW ANALYSIS
-Review the 'CHANGES SINCE LAST BUSINESS DAY' log and the list of 'CURRENTLY IN-PROGRESS TASKS'.
-- What key activities occurred since the last standup?
+Review the 'CHANGES SINCE LAST STANDUP' log and the list of 'CURRENTLY IN-PROGRESS TASKS'.
+- What key activities occurred since the last standup (${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago' })})?
 - Are there any completed tasks or regressions mentioned in the logs?
 - Do the in-progress tasks align with the team's current priorities?
 
@@ -292,7 +315,10 @@ ${tasks.map(task => {
 
 ## DAILY REVIEW
 
-### CHANGES SINCE LAST BUSINESS DAY (${lastBusinessDay.toLocaleDateString()})
+### CHANGES SINCE LAST STANDUP
+**Last Standup**: ${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
+**Last Standup (UTC)**: ${lastStandupTimeUTC}
+**Current Time (UTC)**: ${nowUTC}
 
 \`\`\`markdown
 ${recentLogContent}
@@ -456,8 +482,8 @@ ${logContent}
 Based on the HOUR-FOCUSED analysis above, please address these questions:
 
 1. **DAILY REVIEW**:
-   - What was completed since ${lastBusinessDay.toLocaleDateString('en-US', { weekday: 'long' })} morning, based on the logs?
-   - What new tasks were created or updated?
+   - What was completed since the last standup at ${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago', timeStyle: 'short' })} on ${lastStandupTime.toLocaleDateString('en-US', { weekday: 'long' })}, based on the logs?
+   - What new tasks were created or updated since ${lastStandupTimeUTC}?
    - Does the in-progress work reflect our main goals for the week?
 
 2. **URGENT HOUR ALLOCATION**:
