@@ -5,6 +5,7 @@ import { LogOut, FileText, User, Shield, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface HeaderProps {
   onRefresh?: () => void;
@@ -73,6 +74,9 @@ const Header: React.FC<HeaderProps> = ({
 
           {/* Right Section - User Info and Actions */}
           <div className="flex items-center space-x-3">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+            
             {/* User Info */}
             {username && (
               <div className="hidden sm:flex items-center space-x-2 px-3 py-1 rounded-lg bg-[var(--color-surface-hover)]">

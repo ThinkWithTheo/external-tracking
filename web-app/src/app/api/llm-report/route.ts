@@ -19,13 +19,20 @@ export async function GET(request: NextRequest) {
     if (developerField && developerField.type === 'drop_down') {
       const options = developerField.type_config?.options || [];
       options.forEach((option) => {
-        developerMap[option.orderindex || option.id] = option.name;
+        // Map both orderindex and id to handle both numeric and UUID formats
+        if (option.orderindex !== undefined) {
+          developerMap[option.orderindex] = option.name;
+        }
+        if (option.id) {
+          developerMap[option.id] = option.name;
+        }
       });
     }
     
     // Helper function to get developer name from custom field
     const getDeveloperName = (field: { value?: unknown }): string => {
-      if (!field.value) return 'Unassigned';
+      // Correctly check for null or undefined, allowing 0 as a valid value
+      if (field.value === null || field.value === undefined) return 'Unassigned';
       
       const value = field.value;
       
@@ -34,9 +41,23 @@ export async function GET(request: NextRequest) {
         return developerMap[value] || `Developer ${value}`;
       }
       
-      // If it's a string that's a number
-      if (typeof value === 'string' && !isNaN(Number(value))) {
-        return developerMap[value] || `Developer ${value}`;
+      // If it's a string (could be UUID or numeric string)
+      if (typeof value === 'string') {
+        // Check if it's in the map (handles both UUIDs and numeric strings)
+        if (developerMap[value]) {
+          return developerMap[value];
+        }
+        // Check if the value itself is already a developer name
+        if (value === 'Young' || value === 'Swezey' || value === 'Jacob' || value === 'Irtaza' || value === 'Hamza') {
+          return value;
+        }
+        // If not found and it's a number, show as Developer X
+        if (!isNaN(Number(value))) {
+          return `Developer ${value}`;
+        }
+        // If it's a UUID or other string not in map, return as Unassigned
+        // This prevents showing raw UUIDs in the report
+        return 'Unassigned';
       }
       
       // If it's an object with a name property
@@ -211,59 +232,130 @@ Generated: ${now.toISOString()}
 
 ## PROMPT FOR DAILY STANDUP ANALYSIS
 
-You are analyzing a software development team's task management data for their daily standup meeting. This team meets every morning to review progress and plan the day. Please provide a structured analysis focusing on:
+You are analyzing a software development team's task management data for their ${now.toLocaleDateString('en-US', { weekday: 'long' })} morning standup meeting.
 
-### 1. IMMEDIATE ACTIONS NEEDED (For Today's Standup)
-- **Critical Issues**: What needs immediate attention today?
-- **Blocked Tasks**: Which tasks are blocked and who can unblock them?
-- **Overdue Items**: What's overdue and needs escalation?
-- **Unassigned Urgent Tasks**: Which urgent tasks need assignment NOW?
+**IMPORTANT: Review the COMPLETE TASK TABLE and the DAILY REVIEW section below. These are your primary data sources.**
+
+Based on the data, please provide:
+
+### 1. DAILY REVIEW ANALYSIS
+Review the 'CHANGES SINCE LAST BUSINESS DAY' log and the list of 'CURRENTLY IN-PROGRESS TASKS'.
+- What key activities occurred since the last standup?
+- Are there any completed tasks or regressions mentioned in the logs?
+- Do the in-progress tasks align with the team's current priorities?
 
 ### 2. DEVELOPER WORKLOAD ANALYSIS
-- **Overloaded Developers**: Who has too many in-progress tasks (>4 is concerning)?
-- **Available Capacity**: Who can take on more work?
-- **Redistribution Recommendations**: Specific task reassignments needed
+For EACH developer shown in the table (analyze all developers including Young, Swezey, Jacob, Giancarlo, etc.):
+- Total hours of work assigned.
+- Hours currently in progress.
+- Number of urgent/high priority items.
+- Assessment: Overloaded, balanced, or has capacity? **Do NOT suggest reassigning tasks.**
 
-### 3. PROGRESS TRACKING
-- **Yesterday's Progress**: What was completed recently (check logs)?
-- **Today's Focus**: What should each developer focus on today?
-- **Stale Tasks**: Tasks in progress >3 days that need attention
+### 3. IMMEDIATE ACTIONS FOR TODAY
+Based on the task table:
+- Which specific tasks (by name) need completion TODAY?
+- Which urgent tasks are unassigned and need assignment?
+- Which tasks have been in progress >3 days (see Days In Progress column)?
+- What overdue tasks (marked with 🚨) need escalation?
 
-### 4. RISK ASSESSMENT
-- **At-Risk Deliverables**: What might not meet deadlines?
-- **Customer Impact**: Which customer-facing issues are still open?
-- **Technical Debt**: Are urgent fixes preventing planned work?
+### 4. RISKS AND BLOCKERS
+From the table data:
+- Tasks without hour estimates that are high/urgent priority.
+- Overdue tasks that might impact other work.
+- Developers with >40 hours of assigned work.
 
 ### 5. STANDUP TALKING POINTS
-Provide 3-5 specific discussion points for the standup meeting, formatted as:
-- **[Developer Name]**: Specific question or action item
-- **Team Discussion**: Topics that need group input
+Provide 3-5 specific discussion points using actual task names and developers from the table:
+- Example: "Young has [X] hours in progress on [specific tasks] - is this realistic for today?"
+- Example: "The urgent task [name] assigned to [developer] needs priority today."
+- Example: "The logs show work on [Task Name] was completed. Can we confirm and close it?"
 
-Focus on actionable, specific recommendations that can be implemented TODAY. Use developer names, not numbers.
+**Use the actual data from the task table and logs. Reference specific task names, developer names, and hour estimates. Do not make assumptions and do NOT suggest reassigning work between developers.**
+
+## COMPLETE TASK TABLE (ALL ${tasks.length} TASKS)
+
+| Task Name | Status | Priority | Developer | Hours Est. | Due Date | Days In Progress |
+|-----------|--------|----------|-----------|------------|----------|------------------|
+${tasks.map(task => {
+  const devField = task.custom_fields?.find(f => f.name?.toLowerCase().includes('developer'));
+  const devName = devField ? getDeveloperName(devField) : 'Unassigned';
+  const hours = task.time_estimate ? (task.time_estimate / (1000 * 60 * 60)).toFixed(1) : '0';
+  const dueDate = task.due_date ? new Date(parseInt(task.due_date)).toLocaleDateString() : 'None';
+  const isInProgress = task.status?.status?.toLowerCase().includes('progress') ||
+                       task.status?.status?.toLowerCase().includes('active');
+  const daysInProgress = isInProgress && task.date_updated ?
+    Math.floor((now.getTime() - new Date(parseInt(task.date_updated)).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  const isOverdue = task.due_date && new Date(parseInt(task.due_date)) < now;
+  
+  return `| ${task.name} | ${task.status?.status || 'Unknown'} | ${task.priority?.priority || 'None'} | **${devName}** | ${hours}h | ${dueDate}${isOverdue ? ' 🚨' : ''} | ${isInProgress ? daysInProgress : '-'} |`;
+}).join('\n')}
+
+## DAILY REVIEW
+
+### CHANGES SINCE LAST BUSINESS DAY (${lastBusinessDay.toLocaleDateString()})
+
+\`\`\`markdown
+${recentLogContent}
+\`\`\`
+
+### CURRENTLY IN-PROGRESS TASKS (${inProgressTasks.length})
+${inProgressTasks.map(task => {
+  const devField = task.custom_fields?.find(f => f.name?.toLowerCase().includes('developer'));
+  const devName = devField ? getDeveloperName(devField) : 'Unassigned';
+  const hours = task.time_estimate ? (task.time_estimate / (1000 * 60 * 60)).toFixed(1) : '0';
+  return `- **${task.name}** (${devName}, ${hours}h)`;
+}).join('\n')}
+
 
 ## EXECUTIVE SUMMARY
 
 ### 🚨 Critical Metrics
+- **Total Tasks**: ${tasks.length}
 - **Urgent Tasks**: ${urgentTasks.length} total (${unassignedUrgent} unassigned)
 - **High Priority Tasks**: ${highPriorityTasks.length} total (${unassignedHigh} unassigned)
 - **In Progress Tasks**: ${inProgressTasks.length}
 - **Overdue Tasks**: ${overdueTasks.length}
 - **Stale Tasks (>3 days)**: ${staleInProgressTasks.length}
 
-### 👥 Developer Workload Summary
+### 👥 HOUR-BASED DEVELOPER WORKLOAD (PRIMARY METRIC)
 
 ${Object.entries(developerWorkload)
   .filter(([dev]) => dev !== 'Unassigned')
-  .sort((a, b) => (developerInProgress[b[0]] || 0) - (developerInProgress[a[0]] || 0))
+  .sort((a, b) => {
+    // Sort by in-progress hours first, then by total hours, then by task count
+    const aInProgressHrs = developerInProgressHours[a[0]] || 0;
+    const bInProgressHrs = developerInProgressHours[b[0]] || 0;
+    if (aInProgressHrs !== bInProgressHrs) return bInProgressHrs - aInProgressHrs;
+    const aHours = developerHours[a[0]] || 0;
+    const bHours = developerHours[b[0]] || 0;
+    if (aHours !== bHours) return bHours - aHours;
+    return (developerInProgress[b[0]] || 0) - (developerInProgress[a[0]] || 0);
+  })
   .map(([dev, count]) => {
     const inProgress = developerInProgress[dev] || 0;
+    const inProgressHrs = developerInProgressHours[dev] || 0;
+    const urgentHrs = developerUrgentHours[dev] || 0;
+    const highHrs = developerHighHours[dev] || 0;
     const hours = developerHours[dev] || 0;
-    const status = inProgress > 4 ? '🔴 OVERLOADED' : inProgress > 2 ? '🟡 BUSY' : '🟢 AVAILABLE';
-    return `#### ${dev} ${status}
-- Total Tasks: ${count}
-- In Progress: ${inProgress} tasks
-- Total Hours: ${hours.toFixed(1)} hours
-- Estimated Days: ${(hours / 8).toFixed(1)} days`;
+    const urgentCount = developerUrgentCount[dev] || 0;
+    const highCount = developerHighCount[dev] || 0;
+    
+    // Status based on IN-PROGRESS HOURS (not task count)
+    const status = inProgressHrs > 32 ? '🔴 OVERLOADED' :
+                   inProgressHrs > 16 ? '🟡 BUSY' :
+                   '🟢 AVAILABLE';
+    
+    // Warning if developer has tasks but no hour estimates
+    const noHoursWarning = count > 0 && hours === 0 ? ' ⚠️ NO TIME ESTIMATES' : '';
+    
+    return `#### ${dev} ${status}${noHoursWarning}
+**HOURS BREAKDOWN:**
+- **In Progress**: ${inProgressHrs.toFixed(1)} hours (${inProgress} tasks) ${inProgressHrs > 24 ? '⚠️ TOO MANY HOURS' : ''}
+- **Urgent Priority**: ${urgentHrs.toFixed(1)} hours (${urgentCount} tasks)
+- **High Priority**: ${highHrs.toFixed(1)} hours (${highCount} tasks)
+- **Total Assigned**: ${hours.toFixed(1)} hours (${count} tasks)
+- **Work Days**: ${hours > 0 ? (hours / 8).toFixed(1) : '0.0'} days | In-Progress Days: ${inProgressHrs > 0 ? (inProgressHrs / 8).toFixed(1) : '0.0'} days
+${count > 0 && hours === 0 ? '⚠️ **WARNING**: Has ' + count + ' tasks but no time estimates provided!' : ''}`;
   })
   .join('\n\n')}
 
@@ -363,37 +455,32 @@ ${logContent}
 
 Based on the HOUR-FOCUSED analysis above, please address these questions:
 
-1. **HOUR-BASED REDISTRIBUTION NEEDED TODAY**:
-   - Which developers have >24 hours of in-progress work?
-   - Which specific tasks (with hour estimates) should be reassigned?
-   - Who has available capacity (in hours) to take them?
+1. **DAILY REVIEW**:
+   - What was completed since ${lastBusinessDay.toLocaleDateString('en-US', { weekday: 'long' })} morning, based on the logs?
+   - What new tasks were created or updated?
+   - Does the in-progress work reflect our main goals for the week?
 
 2. **URGENT HOUR ALLOCATION**:
    - How many total urgent hours need completion this week?
    - Which developers should focus on urgent tasks based on their current hour load?
    - Are there enough available hours to complete all urgent work?
 
-3. **SINCE LAST BUSINESS DAY REVIEW**:
-   - What was completed since ${lastBusinessDay.toLocaleDateString('en-US', { weekday: 'long' })} morning?
-   - What tasks were started but not finished?
-   - Based on the activity logs, what's the team's actual velocity in hours/day?
-
-4. **TODAY'S HOUR COMMITMENTS**:
+3. **TODAY'S HOUR COMMITMENTS**:
    - Each developer should commit to completing X hours of work today - what's realistic?
    - Which tasks (with hours) are the priority for completion today?
    - Do we need to work overtime to meet any deadlines?
 
-5. **CAPACITY PLANNING**:
-   - Based on 8-hour workdays, who is over capacity?
+4. **CAPACITY PLANNING**:
+   - Based on 8-hour workdays, who is over capacity with their *in-progress* work?
    - How many total hours of work are in progress vs. team capacity?
    - Should we delay any non-urgent work to focus on priorities?
 
-6. **RISK BY HOURS**:
+5. **RISK BY HOURS**:
    - Which tasks don't have hour estimates and need them ASAP?
    - Based on hour estimates, which deliverables are at risk?
-   - How many hours behind schedule are we overall?
+   - How many hours behind schedule are we overall on overdue tasks?
 
-Please provide HOUR-FOCUSED recommendations. Example: "Move Task X (6 hours) from Developer A (32 hours in progress) to Developer B (8 hours in progress)."
+Please provide HOUR-FOCUSED recommendations, but do NOT suggest reassigning tasks.
 
 ---
 END OF REPORT
