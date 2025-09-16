@@ -109,14 +109,22 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
           // The value is the orderindex of the dropdown option
           // We need to find the matching option name from the type_config
           if (developerField.type_config?.options && Array.isArray(developerField.type_config.options)) {
-            const options = developerField.type_config.options as any[];
-            const matchingOption = options.find((opt: any) => opt.orderindex === developerField.value);
+            const options = developerField.type_config.options as Array<{
+              orderindex?: number;
+              name: string;
+              id?: string;
+            }>;
+            const matchingOption = options.find((opt) => opt.orderindex === developerField.value);
             if (matchingOption) {
               developerValue = matchingOption.name;
             }
           }
         } else if (typeof developerField.value === 'object' && developerField.value !== null) {
-          const valueObj = developerField.value as any;
+          const valueObj = developerField.value as {
+            name?: string;
+            username?: string;
+            value?: string;
+          };
           developerValue = valueObj.name || valueObj.username || valueObj.value || '';
         }
       }
