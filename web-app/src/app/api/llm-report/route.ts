@@ -48,25 +48,71 @@ export async function GET(request: NextRequest) {
       return String(value);
     };
     
+    // Analyze tasks
+    const now = new Date();
+    
+    // Calculate last business day for log filtering
+    const getLastBusinessDay = (date: Date): Date => {
+      const day = date.getDay();
+      const lastBizDay = new Date(date);
+      
+      if (day === 0) { // Sunday
+        lastBizDay.setDate(date.getDate() - 2); // Friday
+      } else if (day === 1) { // Monday
+        lastBizDay.setDate(date.getDate() - 3); // Friday
+      } else {
+        lastBizDay.setDate(date.getDate() - 1); // Previous day
+      }
+      
+      // Set to 8 AM of that day
+      lastBizDay.setHours(8, 0, 0, 0);
+      return lastBizDay;
+    };
+    
+    const lastBusinessDay = getLastBusinessDay(now);
+    
     // Get log file content
     const isVercel = process.env.VERCEL === '1';
     const logDir = isVercel ? '/tmp' : path.join(process.cwd(), 'logs');
     const logFile = path.join(logDir, 'task-changes.md');
     
     let logContent = '';
+    let recentLogContent = '';
+    
     try {
       const fullLog = await fs.readFile(logFile, 'utf8');
-      // Get last 1000 lines
       const lines = fullLog.split('\n');
+      
+      // Get logs since last business day
+      const recentLines: string[] = [];
+      let captureRecent = false;
+      
+      for (const line of lines) {
+        // Check if line contains a timestamp
+        if (line.startsWith('## ')) {
+          const timestampMatch = line.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
+          if (timestampMatch) {
+            const logDate = new Date(timestampMatch[1]);
+            captureRecent = logDate >= lastBusinessDay;
+          }
+        }
+        
+        if (captureRecent) {
+          recentLines.push(line);
+        }
+      }
+      
+      recentLogContent = recentLines.length > 0 ? recentLines.join('\n') : 'No changes since last business day.';
+      
+      // Also keep last 1000 lines for full context
       const last1000Lines = lines.slice(-1000).join('\n');
       logContent = last1000Lines;
     } catch {
       console.log('No log file found');
       logContent = 'No task change logs available yet.';
+      recentLogContent = 'No task change logs available yet.';
     }
-
-    // Analyze tasks
-    const now = new Date();
+    
     const inProgressTasks = tasks.filter(task =>
       task.status?.status?.toLowerCase().includes('progress') ||
       task.status?.status?.toLowerCase().includes('active')
@@ -87,10 +133,15 @@ export async function GET(request: NextRequest) {
       task.priority?.priority?.toLowerCase() === 'high'
     );
 
-    // Count tasks per developer
+    // Count tasks and hours per developer with priority breakdown
     const developerWorkload: Record<string, number> = {};
     const developerHours: Record<string, number> = {};
     const developerInProgress: Record<string, number> = {};
+    const developerInProgressHours: Record<string, number> = {};
+    const developerUrgentHours: Record<string, number> = {};
+    const developerHighHours: Record<string, number> = {};
+    const developerUrgentCount: Record<string, number> = {};
+    const developerHighCount: Record<string, number> = {};
     
     tasks.forEach(task => {
       task.custom_fields?.forEach(field => {
@@ -100,15 +151,35 @@ export async function GET(request: NextRequest) {
           if (devName !== 'Unassigned') {
             developerWorkload[devName] = (developerWorkload[devName] || 0) + 1;
             
-            if (task.time_estimate) {
-              developerHours[devName] = (developerHours[devName] || 0) +
-                (task.time_estimate / (1000 * 60 * 60));
+            const taskHours = task.time_estimate ? (task.time_estimate / (1000 * 60 * 60)) : 0;
+            
+            if (taskHours > 0) {
+              developerHours[devName] = (developerHours[devName] || 0) + taskHours;
             }
             
-            // Count in-progress tasks per developer
+            // Track in-progress tasks and hours
             if (task.status?.status?.toLowerCase().includes('progress') ||
                 task.status?.status?.toLowerCase().includes('active')) {
               developerInProgress[devName] = (developerInProgress[devName] || 0) + 1;
+              if (taskHours > 0) {
+                developerInProgressHours[devName] = (developerInProgressHours[devName] || 0) + taskHours;
+              }
+            }
+            
+            // Track urgent task hours
+            if (task.priority?.priority?.toLowerCase() === 'urgent') {
+              developerUrgentCount[devName] = (developerUrgentCount[devName] || 0) + 1;
+              if (taskHours > 0) {
+                developerUrgentHours[devName] = (developerUrgentHours[devName] || 0) + taskHours;
+              }
+            }
+            
+            // Track high priority task hours
+            if (task.priority?.priority?.toLowerCase() === 'high') {
+              developerHighCount[devName] = (developerHighCount[devName] || 0) + 1;
+              if (taskHours > 0) {
+                developerHighHours[devName] = (developerHighHours[devName] || 0) + taskHours;
+              }
             }
           }
         }
@@ -290,31 +361,39 @@ ${logContent}
 
 ## SPECIFIC QUESTIONS FOR STANDUP DISCUSSION
 
-Based on the data above, please address these specific questions for the team's standup:
+Based on the HOUR-FOCUSED analysis above, please address these questions:
 
-1. **IMMEDIATE ACTIONS**: Which 3-5 tasks should be the team's TOP PRIORITY today?
+1. **HOUR-BASED REDISTRIBUTION NEEDED TODAY**:
+   - Which developers have >24 hours of in-progress work?
+   - Which specific tasks (with hour estimates) should be reassigned?
+   - Who has available capacity (in hours) to take them?
 
-2. **WORKLOAD REDISTRIBUTION**:
-   - Which specific tasks should be moved from overloaded developers?
-   - Who should take them?
+2. **URGENT HOUR ALLOCATION**:
+   - How many total urgent hours need completion this week?
+   - Which developers should focus on urgent tasks based on their current hour load?
+   - Are there enough available hours to complete all urgent work?
 
-3. **BLOCKERS TO RESOLVE**:
-   - What's preventing the stale tasks from moving forward?
-   - Who needs to be involved to unblock them?
+3. **SINCE LAST BUSINESS DAY REVIEW**:
+   - What was completed since ${lastBusinessDay.toLocaleDateString('en-US', { weekday: 'long' })} morning?
+   - What tasks were started but not finished?
+   - Based on the activity logs, what's the team's actual velocity in hours/day?
 
-4. **CUSTOMER IMPACT**:
-   - Which customer-facing issues are still open?
-   - What's the plan to resolve them today?
+4. **TODAY'S HOUR COMMITMENTS**:
+   - Each developer should commit to completing X hours of work today - what's realistic?
+   - Which tasks (with hours) are the priority for completion today?
+   - Do we need to work overtime to meet any deadlines?
 
-5. **RISK MITIGATION**:
-   - Which deliverables are at risk of missing deadlines?
-   - What help do developers need to stay on track?
+5. **CAPACITY PLANNING**:
+   - Based on 8-hour workdays, who is over capacity?
+   - How many total hours of work are in progress vs. team capacity?
+   - Should we delay any non-urgent work to focus on priorities?
 
-6. **PROCESS IMPROVEMENTS**:
-   - Based on the task change logs, what process issues are evident?
-   - What one change would have the biggest impact?
+6. **RISK BY HOURS**:
+   - Which tasks don't have hour estimates and need them ASAP?
+   - Based on hour estimates, which deliverables are at risk?
+   - How many hours behind schedule are we overall?
 
-Please provide specific, actionable recommendations using actual developer names and task names from the data.
+Please provide HOUR-FOCUSED recommendations. Example: "Move Task X (6 hours) from Developer A (32 hours in progress) to Developer B (8 hours in progress)."
 
 ---
 END OF REPORT
