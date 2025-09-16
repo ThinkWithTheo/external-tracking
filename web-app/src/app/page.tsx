@@ -8,6 +8,7 @@ import StatsBar from '@/components/layout/StatsBar';
 import FilterBar, { FilterGroup } from '@/components/layout/FilterBar';
 import CreateTaskModal from '@/components/task/CreateTaskModal';
 import UpdateTaskModal from '@/components/task/UpdateTaskModal';
+import LoginModal from '@/components/LoginModal';
 import { PageTransition, FadeIn, SlideIn } from '@/components/animations/PageTransition';
 import { ProcessedTask, ClickUpTask } from '@/types/clickup';
 
@@ -20,6 +21,9 @@ export default function Home() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ClickUpTask | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [username, setUsername] = useState('');
 
   // Fetch tasks function
   const fetchTasks = async () => {
@@ -40,7 +44,16 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchTasks();
+    // Check if user is already logged in
+    const storedUser = localStorage.getItem('trackingUser');
+    const storedAdmin = localStorage.getItem('trackingAdmin');
+    
+    if (storedUser) {
+      setIsLoggedIn(true);
+      setUsername(storedUser);
+      setIsAdmin(storedAdmin === 'true');
+      fetchTasks();
+    }
   }, []);
 
   // Filter groups configuration (removed Status filter)
@@ -160,8 +173,36 @@ export default function Home() {
     fetchTasks();
   };
 
+  const handleLogin = (user: string, admin: boolean) => {
+    setIsLoggedIn(true);
+    setUsername(user);
+    setIsAdmin(admin);
+    fetchTasks();
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('trackingUser');
+    localStorage.removeItem('trackingAdmin');
+    setIsLoggedIn(false);
+    setIsAdmin(false);
+    setUsername('');
+    window.location.reload();
+  };
+
   // Filter tasks and their subtasks based on search query and active filters
   // Filters are applied cumulatively (AND logic) - subtasks must match ALL active filters
+  // Show login modal if not logged in
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center">
+        <LoginModal
+          isOpen={true}
+          onLogin={handleLogin}
+        />
+      </div>
+    );
+  }
+
   const filteredTasks = tasks.map(task => {
     // Create a copy of the task to avoid mutating the original
     const filteredTask = { ...task, subtasks: [...task.subtasks] };
@@ -234,6 +275,7 @@ export default function Home() {
         onRefresh={fetchTasks}
         isRefreshing={loading}
         lastRefresh={lastRefresh}
+        onLogout={handleLogout}
       />
 
       {/* Main Content */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Flag, MessageSquare, Save, Loader2 } from 'lucide-react';
+import { Calendar, Clock, User, Flag, Save, Loader2, Lock } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -23,7 +23,6 @@ interface TaskFormData {
   dueDate: string;
   timeEstimate: string;
   developer: string;
-  comments: string;
 }
 
 const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
@@ -39,8 +38,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
     priority: null,
     dueDate: '',
     timeEstimate: '',
-    developer: '',
-    comments: ''
+    developer: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -49,6 +47,15 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
   const [developerOptions, setDeveloperOptions] = useState<Array<{ id: string | number; name: string; color?: string }>>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [originalData, setOriginalData] = useState<TaskFormData | null>(null);
+  const [isFullEditAllowed, setIsFullEditAllowed] = useState(false);
+
+  // Check if user has admin privileges for full editing
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isAdmin = localStorage.getItem('trackingAdmin') === 'true';
+      setIsFullEditAllowed(isAdmin);
+    }
+  }, [isOpen]); // Re-check when modal opens
 
   // Priority options
   const priorities = [
@@ -148,8 +155,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         priority: priorityValue,
         dueDate: dueDateString,
         timeEstimate: timeEstimateHours,
-        developer: developerValue,
-        comments: ''
+        developer: developerValue
       };
 
       setFormData(taskFormData);
@@ -219,11 +225,6 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
       changes.developer = formData.developer || undefined;
     }
     
-    // Add comment if provided
-    if (formData.comments.trim()) {
-      changes.comment = formData.comments;
-    }
-    
     return changes;
   };
 
@@ -237,7 +238,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
     const changes = getChangedFields();
     
     // If no changes were made, just close the modal
-    if (Object.keys(changes).length === 0 && !formData.comments.trim()) {
+    if (Object.keys(changes).length === 0) {
       onClose();
       return;
     }
@@ -283,8 +284,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         priority: null,
         dueDate: '',
         timeEstimate: '',
-        developer: '',
-        comments: ''
+        developer: ''
       });
       setOriginalData(null);
       setErrors({});
@@ -318,6 +318,12 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
                 This is a subtask. Parent task will not be changed.
               </div>
             )}
+            {!isFullEditAllowed && (
+              <div className="text-sm text-orange-700 mt-2 flex items-center">
+                <Lock className="w-3 h-3 mr-1" />
+                <span className="font-medium">Limited Edit Mode:</span> Only description can be updated
+              </div>
+            )}
           </div>
 
           {/* Task Name */}
@@ -334,7 +340,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
                 errors.name ? "border-[var(--color-error-500)]" : "border-[var(--color-border)]"
               )}
               placeholder="Enter task name..."
-              disabled={loading}
+              disabled={loading || !isFullEditAllowed}
             />
             {errors.name && (
               <p className="mt-1 text-sm text-[var(--color-error-500)]">{errors.name}</p>
@@ -370,7 +376,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
                   "w-full px-3 py-2 border rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors",
                   errors.status ? "border-[var(--color-error-500)]" : "border-[var(--color-border)]"
                 )}
-                disabled={loading}
+                disabled={loading || !isFullEditAllowed}
               >
                 <option value="">Select status...</option>
                 {statuses.map((status) => (
@@ -405,7 +411,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
                       backgroundColor: formData.priority === priority.id ? priority.color : `${priority.color}80`,
                       color: 'white'
                     }}
-                    disabled={loading}
+                    disabled={loading || !isFullEditAllowed}
                   >
                     <Flag className="w-3 h-3 inline mr-1" />
                     {priority.name}
@@ -428,7 +434,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
                 value={formData.dueDate}
                 onChange={(e) => handleInputChange('dueDate', e.target.value)}
                 className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
-                disabled={loading}
+                disabled={loading || !isFullEditAllowed}
               />
             </div>
 
@@ -446,7 +452,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
                 step="0.5"
                 className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
                 placeholder="e.g., 2.5"
-                disabled={loading}
+                disabled={loading || !isFullEditAllowed}
               />
             </div>
           </div>
@@ -463,23 +469,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
               onChange={(e) => handleInputChange('developer', e.target.value)}
               className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
               placeholder="Enter developer name..."
-              disabled={loading}
-            />
-          </div>
-
-          {/* Update Comments */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-              <MessageSquare className="w-4 h-4 inline mr-1" />
-              Update Comments
-            </label>
-            <textarea
-              value={formData.comments}
-              onChange={(e) => handleInputChange('comments', e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors resize-none"
-              placeholder="Add comments about this update..."
-              disabled={loading}
+              disabled={loading || !isFullEditAllowed}
             />
           </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Flag, MessageSquare, Plus, FolderTree } from 'lucide-react';
+import { Calendar, Clock, User, Flag, Plus, FolderTree, Lock } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -22,7 +22,6 @@ interface TaskFormData {
   dueDate: string;
   timeEstimate: string;
   developer: string;
-  comments: string;
 }
 
 const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
@@ -37,8 +36,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     priority: null,
     dueDate: '',
     timeEstimate: '',
-    developer: '',
-    comments: ''
+    developer: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -47,6 +45,15 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [customFields, setCustomFields] = useState<Array<{ id: string; name: string; type: string }>>([]);
   const [developerOptions, setDeveloperOptions] = useState<Array<{ id: string | number; name: string; color?: string }>>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCreationAllowed, setIsCreationAllowed] = useState(false);
+
+  // Check if user has admin privileges for task creation
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isAdmin = localStorage.getItem('trackingAdmin') === 'true';
+      setIsCreationAllowed(isAdmin);
+    }
+  }, [isOpen]); // Re-check when modal opens
 
   // Priority options
   const priorities = [
@@ -137,11 +144,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         developer: formData.developer || undefined, // Let the server handle custom field mapping
       };
 
-      // Add comment to description if provided
-      if (formData.comments.trim()) {
-        taskData.description = `${taskData.description || ''}\n\nInitial Comment: ${formData.comments}`.trim();
-      }
-
       // Create the task via API
       const response = await fetch('/api/tasks/create', {
         method: 'POST',
@@ -165,8 +167,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         priority: null,
         dueDate: '',
         timeEstimate: '',
-        developer: '',
-        comments: ''
+        developer: ''
       });
 
       // Notify parent component
@@ -205,6 +206,12 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           <p className="text-sm text-blue-700 mt-1">
             This item will be created as a subtask under the &quot;Review&quot; parent task for organized tracking.
           </p>
+          {!isCreationAllowed && (
+            <div className="text-sm text-red-700 mt-2 flex items-center">
+              <Lock className="w-3 h-3 mr-1" />
+              <span className="font-medium">Task creation is disabled. Special authorization required.</span>
+            </div>
+          )}
         </div>
 
         {/* Task Name */}
@@ -221,7 +228,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               errors.name ? "border-[var(--color-error-500)]" : "border-[var(--color-border)]"
             )}
             placeholder="Enter review item name..."
-            disabled={loading}
+            disabled={loading || !isCreationAllowed}
           />
           {errors.name && (
             <p className="mt-1 text-sm text-[var(--color-error-500)]">{errors.name}</p>
@@ -239,7 +246,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             rows={3}
             className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors resize-none"
             placeholder="Enter task description..."
-            disabled={loading}
+            disabled={loading || !isCreationAllowed}
           />
         </div>
 
@@ -257,7 +264,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 "w-full px-3 py-2 border rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors",
                 errors.status ? "border-[var(--color-error-500)]" : "border-[var(--color-border)]"
               )}
-              disabled={loading}
+              disabled={loading || !isCreationAllowed}
             >
               <option value="">Select status...</option>
               {statuses.map((status) => (
@@ -292,7 +299,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     backgroundColor: priority.color,
                     color: 'white'
                   }}
-                  disabled={loading}
+                  disabled={loading || !isCreationAllowed}
                 >
                   <Flag className="w-3 h-3 inline mr-1" />
                   {priority.name}
@@ -315,7 +322,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               value={formData.dueDate}
               onChange={(e) => handleInputChange('dueDate', e.target.value)}
               className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
-              disabled={loading}
+              disabled={loading || !isCreationAllowed}
             />
           </div>
 
@@ -333,7 +340,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               step="0.5"
               className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
               placeholder="e.g., 2.5"
-              disabled={loading}
+              disabled={loading || !isCreationAllowed}
             />
           </div>
         </div>
@@ -350,23 +357,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             onChange={(e) => handleInputChange('developer', e.target.value)}
             className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
             placeholder="Enter developer name..."
-            disabled={loading}
-          />
-        </div>
-
-        {/* Comments */}
-        <div>
-          <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-            <MessageSquare className="w-4 h-4 inline mr-1" />
-            Initial Comments
-          </label>
-          <textarea
-            value={formData.comments}
-            onChange={(e) => handleInputChange('comments', e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors resize-none"
-            placeholder="Add any initial comments or notes..."
-            disabled={loading}
+            disabled={loading || !isCreationAllowed}
           />
         </div>
 
@@ -390,7 +381,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           <Button
             type="submit"
             loading={loading}
-            disabled={loading}
+            disabled={loading || !isCreationAllowed}
           >
             <Plus className="w-4 h-4 mr-1" />
             Create Task

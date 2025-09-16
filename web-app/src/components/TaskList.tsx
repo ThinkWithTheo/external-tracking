@@ -6,7 +6,7 @@ import TaskRow from './TaskRow';
 import { TaskGrid } from './task/TaskCard';
 import { TaskSkeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
-import { RefreshCw, AlertCircle, Clock, User, Calendar, MessageCircle, Flag, Grid3X3, List, Plus } from 'lucide-react';
+import { RefreshCw, AlertCircle, Clock, User, Calendar, Flag, Grid3X3, List, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TaskListProps {
@@ -279,13 +279,6 @@ const TaskList: React.FC<TaskListProps> = ({
                 <div className="flex items-center justify-center">
                   <Flag className="w-3 h-3 mr-1" />
                   <span>Priority</span>
-                </div>
-              </div>
-              
-              <div className="w-20 text-center px-2">
-                <div className="flex items-center justify-center">
-                  <MessageCircle className="w-3 h-3 mr-1" />
-                  <span>Comments</span>
                 </div>
               </div>
             </div>

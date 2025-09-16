@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ProcessedTask } from '@/types/clickup';
-import { Clock, User, Calendar, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Clock, User, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { PriorityBadge } from '@/components/ui/Badge';
 
@@ -49,6 +49,81 @@ const TaskRow: React.FC<TaskRowProps> = ({
 
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
   const indentLevel = level * 24; // 24px per level
+
+  // Calculate parent task values based on child tasks
+  const parentTaskData = useMemo(() => {
+    if (!hasSubtasks || task.isSubtask) {
+      return {
+        timeEstimate: task.timeEstimate,
+        developer: task.developer,
+        status: task.status,
+        statusColor: task.statusColor,
+        dueDate: task.dueDate,
+        priority: task.priority
+      };
+    }
+
+    // Calculate total time from subtasks
+    const totalTime = task.subtasks.reduce((sum, subtask) => sum + (subtask.timeEstimate || 0), 0);
+
+    // Find most common developer
+    const developerCounts: Record<string, number> = {};
+    task.subtasks.forEach(subtask => {
+      if (subtask.developer) {
+        developerCounts[subtask.developer] = (developerCounts[subtask.developer] || 0) + 1;
+      }
+    });
+    const mostCommonDeveloper = Object.keys(developerCounts).length > 0
+      ? Object.entries(developerCounts).reduce((a, b) => a[1] > b[1] ? a : b)[0]
+      : task.developer;
+
+    // Check if any subtask is in progress
+    const hasInProgressSubtask = task.subtasks.some(subtask =>
+      subtask.status?.toLowerCase().includes('progress') ||
+      subtask.status?.toLowerCase().includes('active') ||
+      subtask.status?.toLowerCase().includes('working')
+    );
+    const status = hasInProgressSubtask ? 'IN PROGRESS' : task.status;
+    const statusColor = hasInProgressSubtask ? '#1090e0' : task.statusColor;
+
+    // Find earliest due date
+    const dueDates = task.subtasks
+      .map(subtask => subtask.dueDate)
+      .filter(date => date)
+      .map(date => parseInt(date!));
+    const earliestDueDate = dueDates.length > 0
+      ? Math.min(...dueDates).toString()
+      : task.dueDate;
+
+    // Find highest priority
+    const priorityOrder: Record<string, number> = {
+      'urgent': 1,
+      'high': 2,
+      'normal': 3,
+      'low': 4,
+      'none': 5
+    };
+    
+    let highestPriority = task.priority;
+    task.subtasks.forEach(subtask => {
+      if (subtask.priority) {
+        const currentOrder = priorityOrder[task.priority?.name.toLowerCase() || 'none'] || 5;
+        const subtaskOrder = priorityOrder[subtask.priority.name.toLowerCase()] || 5;
+        if (subtaskOrder < currentOrder) {
+          highestPriority = subtask.priority;
+        }
+      }
+    });
+
+    return {
+      timeEstimate: totalTime,
+      developer: mostCommonDeveloper,
+      status,
+      statusColor,
+      dueDate: earliestDueDate,
+      priority: highestPriority
+    };
+  }, [task, hasSubtasks]);
 
   return (
     <>
@@ -109,7 +184,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
         <div className="w-20 text-center px-2">
           <div className="flex items-center justify-center text-sm text-gray-600">
             <Clock className="w-3 h-3 mr-1" />
-            <span>{formatTimeEstimate(task.timeEstimate)}</span>
+            <span>{formatTimeEstimate(parentTaskData.timeEstimate)}</span>
           </div>
         </div>
 
@@ -117,8 +192,8 @@ const TaskRow: React.FC<TaskRowProps> = ({
         <div className="w-32 text-center px-2">
           <div className="flex items-center justify-center text-sm text-gray-600">
             <User className="w-3 h-3 mr-1" />
-            <span className="truncate" title={task.developer || 'Unassigned'}>
-              {task.developer || '—'}
+            <span className="truncate" title={parentTaskData.developer || 'Unassigned'}>
+              {parentTaskData.developer || '—'}
             </span>
           </div>
         </div>
@@ -127,9 +202,9 @@ const TaskRow: React.FC<TaskRowProps> = ({
         <div className="w-24 text-center px-2">
           <span
             className="status-badge inline-block px-2 py-1 rounded-full text-xs font-medium text-white"
-            style={{ backgroundColor: task.statusColor }}
+            style={{ backgroundColor: parentTaskData.statusColor }}
           >
-            {task.status}
+            {parentTaskData.status}
           </span>
         </div>
 
@@ -137,25 +212,17 @@ const TaskRow: React.FC<TaskRowProps> = ({
         <div className="w-20 text-center px-2">
           <div className="flex items-center justify-center text-sm text-gray-600">
             <Calendar className="w-3 h-3 mr-1" />
-            <span>{formatDueDate(task.dueDate)}</span>
+            <span>{formatDueDate(parentTaskData.dueDate)}</span>
           </div>
         </div>
 
         {/* Priority */}
         <div className="w-20 text-center px-2">
           <PriorityBadge
-            priority={task.priority?.name || 'None'}
-            color={task.priority?.color}
+            priority={parentTaskData.priority?.name || 'None'}
+            color={parentTaskData.priority?.color}
             size="sm"
           />
-        </div>
-
-        {/* Comments */}
-        <div className="w-20 text-center px-2">
-          <div className="flex items-center justify-center text-sm text-gray-600">
-            <MessageCircle className="w-3 h-3 mr-1" />
-            <span>{task.comments.length}</span>
-          </div>
         </div>
       </div>
 
