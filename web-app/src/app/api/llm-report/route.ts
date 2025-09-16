@@ -79,12 +79,20 @@ export async function GET(request: NextRequest) {
       
       // Determine if we need to look at today's or yesterday's standup
       const currentHour = date.getUTCHours();
+      const currentMinutes = date.getUTCMinutes();
+      const currentTimeInMinutes = currentHour * 60 + currentMinutes;
       
       // 10 AM CST = 4 PM UTC (during CST) or 3 PM UTC (during CDT)
       // For simplicity, we'll use 3 PM UTC (CDT) as the cutoff since it's currently CDT
       const standupHourUTC = 15; // 3 PM UTC = 10 AM CDT
+      const standupTimeInMinutes = standupHourUTC * 60;
       
-      if (currentHour < standupHourUTC) {
+      // Add a 3-hour buffer after standup for updates made during/after the meeting
+      // This prevents showing updates from the meeting itself as "changes since last standup"
+      const bufferHours = 3;
+      const bufferEndTimeInMinutes = standupTimeInMinutes + (bufferHours * 60); // 6 PM UTC = 1 PM CDT
+      
+      if (currentTimeInMinutes < standupTimeInMinutes) {
         // Before today's standup, look at previous business day's standup
         if (day === 0) { // Sunday
           lastStandup.setUTCDate(date.getUTCDate() - 2); // Friday
@@ -93,11 +101,16 @@ export async function GET(request: NextRequest) {
         } else {
           lastStandup.setUTCDate(date.getUTCDate() - 1); // Previous day
         }
+      } else if (currentTimeInMinutes >= bufferEndTimeInMinutes) {
+        // After today's standup + buffer, use today's standup end time (standup + buffer)
+        // This means changes made during the meeting won't show up tomorrow
+        lastStandup.setUTCHours(standupHourUTC + bufferHours, 0, 0, 0);
+        return lastStandup;
       }
-      // else: After today's standup, use today
+      // else: During standup or buffer period, still use previous day's standup
       
-      // Set to standup time (10 AM CST/CDT = 3 PM UTC during CDT, 4 PM UTC during CST)
-      lastStandup.setUTCHours(standupHourUTC, 0, 0, 0);
+      // Set to standup time + buffer (to exclude meeting updates)
+      lastStandup.setUTCHours(standupHourUTC + bufferHours, 0, 0, 0);
       return lastStandup;
     };
     
@@ -249,8 +262,11 @@ You are analyzing a software development team's task management data for their $
 **IMPORTANT CONTEXT:**
 - The current report was generated at: ${nowUTC}
 - Your daily standup is at 10:00 AM CST/CDT (which is 15:00 UTC during CDT, 16:00 UTC during CST)
-- The logs below show changes since the last standup at: ${lastStandupTimeUTC}
+- The logs below show changes since: ${lastStandupTimeUTC}
+  - This includes a 3-hour buffer after standup meetings to exclude updates made during/after the meeting
+  - This prevents rehashing updates that were discussed in yesterday's meeting
 - All timestamps in the logs are in UTC format (ISO 8601)
+- Assume developers have a capacity of 6 productive hours per day.
 
 **IMPORTANT: Review the COMPLETE TASK TABLE and the DAILY REVIEW section below. These are your primary data sources.**
 
@@ -262,58 +278,65 @@ Review the 'CHANGES SINCE LAST STANDUP' log and the list of 'CURRENTLY IN-PROGRE
 - Are there any completed tasks or regressions mentioned in the logs?
 - Do the in-progress tasks align with the team's current priorities?
 
-### 2. DEVELOPER WORKLOAD ANALYSIS
-For EACH developer shown in the table (analyze all developers including Young, Swezey, Jacob, Giancarlo, etc.):
-- Total hours of work assigned.
-- Hours currently in progress.
-- Number of urgent/high priority items.
-- Assessment: Overloaded, balanced, or has capacity? **Do NOT suggest reassigning tasks.**
-
-### 3. IMMEDIATE ACTIONS FOR TODAY
-Based on the task table:
-- Which specific tasks (by name) need completion TODAY?
-- Which urgent tasks are unassigned and need assignment?
-- Which tasks have been in progress >3 days (see Days In Progress column)?
-- What overdue tasks (marked with 🚨) need escalation?
-
-### 4. RISKS AND BLOCKERS
+### 2. RISKS AND BLOCKERS
 From the table data:
 - Tasks without hour estimates that are high/urgent priority.
 - Overdue tasks that might impact other work.
 - Developers with >40 hours of assigned work.
 
-### 5. STANDUP TALKING POINTS
-Provide 3-5 specific discussion points using actual task names and developers from the table:
-- Example: "Young has [X] hours in progress on [specific tasks] - is this realistic for today?"
-- Example: "The urgent task [name] assigned to [developer] needs priority today."
-- Example: "The logs show work on [Task Name] was completed. Can we confirm and close it?"
+### 3. STANDUP TALKING POINTS (QUICK READ)
+Based on the complete task table, provide 5-7 concise, actionable talking points focusing on:
+
+**URGENT ITEMS HANGING:**
+- Which URGENT tasks have been in progress for 2+ days? (Check Task ID, Developer, Days in Progress)
+- Which URGENT tasks are still unassigned and need immediate assignment?
+- Any urgent tasks without time estimates that need sizing?
+
+**TODAY'S PRIORITIES:**
+- For each developer with urgent work: "[Developer] has urgent task [Task ID: Name] - [X days] in progress"
+- Overdue tasks marked with 🚨 that need escalation
+- Quick wins: Urgent tasks under 4 hours that could be completed today
+
+**WORKLOAD CHECK:**
+- Developers with 10+ hours of urgent work in progress
+- Anyone blocked or overloaded based on hours (6 productive hours/day capacity)
+
+Keep each point brief and reference specific Task IDs for easy lookup. Focus on urgent tasks that have been stagnant.
 
 **Use the actual data from the task table and logs. Reference specific task names, developer names, and hour estimates. Do not make assumptions and do NOT suggest reassigning work between developers.**
 
 ## COMPLETE TASK TABLE (ALL ${tasks.length} TASKS)
 
-| Task Name | Status | Priority | Developer | Hours Est. | Due Date | Days In Progress |
-|-----------|--------|----------|-----------|------------|----------|------------------|
-${tasks.map(task => {
-  const devField = task.custom_fields?.find(f => f.name?.toLowerCase().includes('developer'));
-  const devName = devField ? getDeveloperName(devField) : 'Unassigned';
-  const hours = task.time_estimate ? (task.time_estimate / (1000 * 60 * 60)).toFixed(1) : '0';
-  const dueDate = task.due_date ? new Date(parseInt(task.due_date)).toLocaleDateString() : 'None';
-  const isInProgress = task.status?.status?.toLowerCase().includes('progress') ||
-                       task.status?.status?.toLowerCase().includes('active');
-  const daysInProgress = isInProgress && task.date_updated ?
-    Math.floor((now.getTime() - new Date(parseInt(task.date_updated)).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-  const isOverdue = task.due_date && new Date(parseInt(task.due_date)) < now;
-  
-  return `| ${task.name} | ${task.status?.status || 'Unknown'} | ${task.priority?.priority || 'None'} | **${devName}** | ${hours}h | ${dueDate}${isOverdue ? ' 🚨' : ''} | ${isInProgress ? daysInProgress : '-'} |`;
-}).join('\n')}
+| Task ID | Task Name | Description | Status | Priority | Developer | Hours Est. | Due Date | Days In Progress |
+|---------|-----------|-------------|--------|----------|-----------|------------|----------|------------------|
+${tasks
+  .sort((a, b) => {
+    // Sort alphabetically by task name (parent - child format)
+    return a.name.localeCompare(b.name);
+  })
+  .map(task => {
+    const devField = task.custom_fields?.find(f => f.name?.toLowerCase().includes('developer'));
+    const devName = devField ? getDeveloperName(devField) : 'Unassigned';
+    const hours = task.time_estimate ? (task.time_estimate / (1000 * 60 * 60)).toFixed(1) : '0';
+    const dueDate = task.due_date ? new Date(parseInt(task.due_date)).toLocaleDateString() : 'None';
+    const isInProgress = task.status?.status?.toLowerCase().includes('progress') ||
+                         task.status?.status?.toLowerCase().includes('active');
+    const daysInProgress = isInProgress && task.date_updated ?
+      Math.floor((now.getTime() - new Date(parseInt(task.date_updated)).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    const isOverdue = task.due_date && new Date(parseInt(task.due_date)) < now;
+    
+    const description = task.description ? task.description.replace(/(\r\n|\n|\r)/gm, " ").substring(0, 100) + (task.description.length > 100 ? '...' : '') : 'No description';
+    
+    return `| ${task.id} | ${task.name} | ${description} | ${task.status?.status || 'Unknown'} | ${task.priority?.priority || 'None'} | **${devName}** | ${hours}h | ${dueDate}${isOverdue ? ' 🚨' : ''} | ${isInProgress ? daysInProgress : '-'} |`;
+  }).join('\n')}
 
 ## DAILY REVIEW
 
 ### CHANGES SINCE LAST STANDUP
 **Last Standup**: ${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
-**Last Standup (UTC)**: ${lastStandupTimeUTC}
+**Changes Tracked From**: ${lastStandupTimeUTC} (includes 3-hour post-meeting buffer)
 **Current Time (UTC)**: ${nowUTC}
+**Note**: Updates made during/after standup meetings are excluded to prevent rehashing
 
 \`\`\`markdown
 ${recentLogContent}
@@ -409,13 +432,14 @@ ${task.due_date && new Date(parseInt(task.due_date)) < now ? '- 🚨 **OVERDUE**
 ### 📋 IN PROGRESS TASKS BY DEVELOPER
 
 ${Object.entries(developerInProgress)
-  .filter(([dev, count]) => count > 0)
-  .sort((a, b) => b[1] - a[1])
+  .filter(([, count]) => count > 0)
+  .sort((a, b) => a[0].localeCompare(b[0])) // Sort alphabetically by developer name
   .map(([dev]) => {
     const devTasks = inProgressTasks.filter(task => {
       const devField = task.custom_fields?.find(f => f.name?.toLowerCase().includes('developer'));
       return devField && getDeveloperName(devField) === dev;
-    });
+    })
+    .sort((a, b) => a.name.localeCompare(b.name)); // Sort tasks alphabetically by name
     
     return `#### ${dev} (${devTasks.length} in progress)
 ${devTasks.map(task => {
@@ -432,6 +456,80 @@ ${devTasks.map(task => {
   ${overdue ? '  - 🚨 **OVERDUE**' : ''}`;
 }).join('\n')}`;
   }).join('\n\n')}
+
+### 🚨 URGENT PRIORITY TASKS BY DEVELOPER
+
+${(() => {
+  // Group urgent tasks by developer
+  const urgentByDeveloper: Record<string, typeof urgentTasks> = {};
+  
+  urgentTasks.forEach(task => {
+    const devField = task.custom_fields?.find(f => f.name?.toLowerCase().includes('developer'));
+    const devName = devField ? getDeveloperName(devField) : 'Unassigned';
+    
+    if (!urgentByDeveloper[devName]) {
+      urgentByDeveloper[devName] = [];
+    }
+    urgentByDeveloper[devName].push(task);
+  });
+  
+  // Sort developers alphabetically and format output
+  return Object.entries(urgentByDeveloper)
+    .sort((a, b) => a[0].localeCompare(b[0])) // Sort alphabetically by developer name
+    .map(([dev, tasks]) => {
+      const sortedTasks = tasks.sort((a, b) => a.name.localeCompare(b.name)); // Sort tasks alphabetically
+      
+      return `#### ${dev} (${sortedTasks.length} urgent tasks)
+${sortedTasks.map(task => {
+  const hours = task.time_estimate ? (task.time_estimate / (1000 * 60 * 60)).toFixed(1) : '0';
+  const isInProgress = task.status?.status?.toLowerCase().includes('progress') ||
+                       task.status?.status?.toLowerCase().includes('active');
+  const overdue = task.due_date && new Date(parseInt(task.due_date)) < now;
+  
+  return `- **${task.name}**
+  - Status: ${task.status?.status || 'Unknown'} ${isInProgress ? '(In Progress)' : ''}
+  - Time Estimate: ${hours}h
+  ${overdue ? '  - 🚨 **OVERDUE**' : ''}`;
+}).join('\n')}`;
+    }).join('\n\n');
+})()}
+
+### 📊 HIGH PRIORITY TASKS BY DEVELOPER
+
+${(() => {
+  // Group high priority tasks by developer
+  const highByDeveloper: Record<string, typeof highPriorityTasks> = {};
+  
+  highPriorityTasks.forEach(task => {
+    const devField = task.custom_fields?.find(f => f.name?.toLowerCase().includes('developer'));
+    const devName = devField ? getDeveloperName(devField) : 'Unassigned';
+    
+    if (!highByDeveloper[devName]) {
+      highByDeveloper[devName] = [];
+    }
+    highByDeveloper[devName].push(task);
+  });
+  
+  // Sort developers alphabetically and format output
+  return Object.entries(highByDeveloper)
+    .sort((a, b) => a[0].localeCompare(b[0])) // Sort alphabetically by developer name
+    .map(([dev, tasks]) => {
+      const sortedTasks = tasks.sort((a, b) => a.name.localeCompare(b.name)); // Sort tasks alphabetically
+      
+      return `#### ${dev} (${sortedTasks.length} high priority tasks)
+${sortedTasks.map(task => {
+  const hours = task.time_estimate ? (task.time_estimate / (1000 * 60 * 60)).toFixed(1) : '0';
+  const isInProgress = task.status?.status?.toLowerCase().includes('progress') ||
+                       task.status?.status?.toLowerCase().includes('active');
+  const overdue = task.due_date && new Date(parseInt(task.due_date)) < now;
+  
+  return `- **${task.name}**
+  - Status: ${task.status?.status || 'Unknown'} ${isInProgress ? '(In Progress)' : ''}
+  - Time Estimate: ${hours}h
+  ${overdue ? '  - 🚨 **OVERDUE**' : ''}`;
+}).join('\n')}`;
+    }).join('\n\n');
+})()}
 
 ### ⏰ STALE TASKS (In Progress >3 Days)
 
@@ -472,36 +570,16 @@ ${logContent}
 
 </details>
 
-## SPECIFIC QUESTIONS FOR STANDUP DISCUSSION
+## FOCUS AREAS FOR TODAY
 
-Based on the HOUR-FOCUSED analysis above, please address these questions:
+Please analyze the data above and provide:
+1. **Quick summary** of changes since last standup (${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago', timeStyle: 'short' })} on ${lastStandupTime.toLocaleDateString('en-US', { weekday: 'long' })})
+2. **Urgent tasks stagnant 2+ days** - List Task IDs and developers
+3. **Critical unassigned urgent work** - Task IDs that need immediate assignment
+4. **Developer capacity concerns** - Who's over 6 productive hours today?
+5. **Blockers/risks** needing immediate attention
 
-1. **DAILY REVIEW**:
-   - What was completed since the last standup at ${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago', timeStyle: 'short' })} on ${lastStandupTime.toLocaleDateString('en-US', { weekday: 'long' })}, based on the logs?
-   - What new tasks were created or updated since ${lastStandupTimeUTC}?
-   - Does the in-progress work reflect our main goals for the week?
-
-2. **URGENT HOUR ALLOCATION**:
-   - How many total urgent hours need completion this week?
-   - Which developers should focus on urgent tasks based on their current hour load?
-   - Are there enough available hours to complete all urgent work?
-
-3. **TODAY'S HOUR COMMITMENTS**:
-   - Each developer should commit to completing X hours of work today - what's realistic?
-   - Which tasks (with hours) are the priority for completion today?
-   - Do we need to work overtime to meet any deadlines?
-
-4. **CAPACITY PLANNING**:
-   - Based on 8-hour workdays, who is over capacity with their *in-progress* work?
-   - How many total hours of work are in progress vs. team capacity?
-   - Should we delay any non-urgent work to focus on priorities?
-
-5. **RISK BY HOURS**:
-   - Which tasks don't have hour estimates and need them ASAP?
-   - Based on hour estimates, which deliverables are at risk?
-   - How many hours behind schedule are we overall on overdue tasks?
-
-Please provide HOUR-FOCUSED recommendations, but do NOT suggest reassigning tasks.
+Keep responses concise and actionable, referencing specific Task IDs.
 
 ---
 END OF REPORT

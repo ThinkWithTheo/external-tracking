@@ -251,7 +251,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
             }, {} as Record<string, { subtasks: typeof inProgressSubtasksList, totalHours: number, color: string }>);
             
             const developers = Object.entries(subtasksByDeveloper).sort((a, b) =>
-              b[1].totalHours - a[1].totalHours
+              a[0].localeCompare(b[0]) // Sort alphabetically by developer name
             );
             
             if (developers.length === 0) {
@@ -285,7 +285,14 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                     </div>
                     
                     <div className="pl-4 space-y-1">
-                      {data.subtasks.map(item => {
+                      {data.subtasks
+                        .sort((a, b) => {
+                          // Sort alphabetically by parent name, then by subtask name
+                          const parentCompare = a.parentName.localeCompare(b.parentName);
+                          if (parentCompare !== 0) return parentCompare;
+                          return a.subtask.name.localeCompare(b.subtask.name);
+                        })
+                        .map(item => {
                         const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
                         
                         return (
@@ -405,7 +412,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
             }, {} as Record<string, { subtasks: typeof urgentSubtasks, totalHours: number, color: string }>);
             
             const developers = Object.entries(subtasksByDeveloper).sort((a, b) =>
-              b[1].totalHours - a[1].totalHours
+              a[0].localeCompare(b[0]) // Sort alphabetically by developer name
             );
             
             if (developers.length === 0) {
@@ -439,7 +446,14 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                     </div>
                     
                     <div className="pl-4 space-y-1">
-                      {data.subtasks.map(item => {
+                      {data.subtasks
+                        .sort((a, b) => {
+                          // Sort alphabetically by parent name, then by subtask name
+                          const parentCompare = a.parentName.localeCompare(b.parentName);
+                          if (parentCompare !== 0) return parentCompare;
+                          return a.subtask.name.localeCompare(b.subtask.name);
+                        })
+                        .map(item => {
                         const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
                         
                         return (
@@ -573,7 +587,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
             }, {} as Record<string, { subtasks: typeof highSubtasks, totalHours: number, color: string }>);
             
             const developers = Object.entries(subtasksByDeveloper).sort((a, b) =>
-              b[1].totalHours - a[1].totalHours
+              a[0].localeCompare(b[0]) // Sort alphabetically by developer name
             );
             
             if (developers.length === 0) {
@@ -607,7 +621,14 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                     </div>
                     
                     <div className="pl-4 space-y-1">
-                      {data.subtasks.map(item => {
+                      {data.subtasks
+                        .sort((a, b) => {
+                          // Sort alphabetically by parent name, then by subtask name
+                          const parentCompare = a.parentName.localeCompare(b.parentName);
+                          if (parentCompare !== 0) return parentCompare;
+                          return a.subtask.name.localeCompare(b.subtask.name);
+                        })
+                        .map(item => {
                         const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
                         
                         return (
