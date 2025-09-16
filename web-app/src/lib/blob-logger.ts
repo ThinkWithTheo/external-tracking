@@ -89,10 +89,11 @@ async function appendToBlob(content: string): Promise<void> {
     // Append new content
     const newContent = existingContent + content;
     
-    // Upload the updated content
+    // Upload the updated content - allow overwrite since we're updating
     const blob = await put(LOG_FILENAME, newContent, {
       access: 'public',
       addRandomSuffix: false,
+      allowOverwrite: true,  // Allow overwriting the existing file
     });
     
     console.log(`Successfully logged to Vercel Blob: ${blob.url}`);
@@ -114,8 +115,15 @@ async function logToLocalFile(entry: LogEntry): Promise<void> {
     const logDir = path.join(process.cwd(), 'logs');
     const logFile = path.join(logDir, 'task-changes.md');
     
-    // Create directory if needed
-    await fs.mkdir(logDir, { recursive: true });
+    // Try to create directory if needed (may fail in read-only environments like Vercel)
+    try {
+      await fs.mkdir(logDir, { recursive: true });
+    } catch (mkdirError) {
+      // Directory creation might fail in production (Vercel), but that's expected
+      console.warn('Could not create logs directory (expected in production):', mkdirError);
+      // Don't proceed if we can't create the directory
+      return;
+    }
     
     // Format and append
     const logContent = formatLogEntry(entry);
@@ -151,9 +159,10 @@ export async function logTaskChange(
     try {
       const logContent = formatLogEntry(entry);
       await appendToBlob(logContent);
+      console.log(`Successfully logged to Vercel Blob: ${entry.action} ${entry.taskId}`);
     } catch (error) {
-      // If blob fails, fall back to local
-      console.error('Blob storage failed, falling back to local file');
+      // If blob fails, try local as fallback (though it may also fail in production)
+      console.error('Blob storage failed, attempting local file fallback:', error);
       await logToLocalFile(entry);
     }
   } else {
