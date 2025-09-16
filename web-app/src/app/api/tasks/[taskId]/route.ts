@@ -7,7 +7,9 @@ import * as path from 'path';
 // Helper function to log changes to markdown file
 async function logChangeToMarkdown(taskId: string, changes: Partial<TaskUpdateData>, action: 'UPDATE' | 'CREATE' = 'UPDATE') {
   try {
-    const logDir = path.join(process.cwd(), 'logs');
+    // Use /tmp directory on Vercel (serverless environment)
+    const isVercel = process.env.VERCEL === '1';
+    const logDir = isVercel ? '/tmp' : path.join(process.cwd(), 'logs');
     const logFile = path.join(logDir, 'task-changes.md');
     
     // Create logs directory if it doesn't exist

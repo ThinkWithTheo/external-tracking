@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, FileText, User, Shield } from 'lucide-react';
+import { LogOut, FileText, User, Shield, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
@@ -38,6 +38,11 @@ const Header: React.FC<HeaderProps> = ({
   const handleViewLog = () => {
     // Open the markdown log in a new tab
     window.open('/api/logs/markdown', '_blank');
+  };
+
+  const handleDownloadLLMReport = () => {
+    // Download the LLM report
+    window.open('/api/llm-report?download=true', '_blank');
   };
   return (
     <header className={cn(
@@ -87,17 +92,30 @@ const Header: React.FC<HeaderProps> = ({
               </div>
             )}
 
-            {/* View Log Button (Admin only) */}
+            {/* Admin buttons */}
             {isAdmin && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleViewLog}
-                aria-label="View change log"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                View Log
-              </Button>
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleViewLog}
+                  aria-label="View change log"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Log
+                </Button>
+
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleDownloadLLMReport}
+                  aria-label="Download LLM Report"
+                  title="Download task report for LLM analysis"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  LLM Report
+                </Button>
+              </>
             )}
 
             {/* Logout Button */}
