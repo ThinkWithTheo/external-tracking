@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ProcessedTask } from '@/types/clickup';
 import TaskRow from './TaskRow';
 import { TaskGrid } from './task/TaskCard';
@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils';
 interface TaskListProps {
   className?: string;
   tasks?: ProcessedTask[];
-  activeFilters?: Record<string, string[]>;
   onCreateTask?: () => void;
   onTaskClick?: (taskId: string) => void;
 }
@@ -22,7 +21,6 @@ type ViewMode = 'cards' | 'table';
 const TaskList: React.FC<TaskListProps> = ({
   className = '',
   tasks: propTasks,
-  activeFilters,
   onCreateTask,
   onTaskClick
 }) => {
@@ -30,13 +28,12 @@ const TaskList: React.FC<TaskListProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
 
   // Use prop tasks if provided, otherwise fetch internally
   const tasks = propTasks || internalTasks;
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     // Only fetch if no tasks are provided via props
     if (propTasks) return;
     
@@ -52,13 +49,12 @@ const TaskList: React.FC<TaskListProps> = ({
       }
       
       setInternalTasks(data.tasks);
-      setLastRefresh(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
-  };
+  }, [propTasks]);
 
   useEffect(() => {
     if (propTasks) {
@@ -66,7 +62,7 @@ const TaskList: React.FC<TaskListProps> = ({
     } else {
       fetchTasks();
     }
-  }, [propTasks]);
+  }, [propTasks, fetchTasks]);
 
   const handleToggleExpand = (taskId: string) => {
     setExpandedTasks(prev => {

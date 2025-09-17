@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface PageTransitionProps {
   children: React.ReactNode;
@@ -64,7 +64,7 @@ interface StaggerItemProps {
   index?: number;
 }
 
-const StaggerItem: React.FC<StaggerItemProps> = ({ children, className, index = 0 }) => {
+const StaggerItem: React.FC<StaggerItemProps> = ({ children, className }) => {
   return (
     <motion.div
       variants={{

@@ -15,15 +15,12 @@ import { ProcessedTask, ClickUpTask } from '@/types/clickup';
 export default function Home() {
   const [tasks, setTasks] = useState<ProcessedTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ClickUpTask | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [username, setUsername] = useState('');
 
   // Fetch tasks function
   const fetchTasks = async () => {
@@ -34,7 +31,6 @@ export default function Home() {
       
       if (response.ok) {
         setTasks(data.tasks);
-        setLastRefresh(new Date());
       }
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -46,12 +42,9 @@ export default function Home() {
   useEffect(() => {
     // Check if user is already logged in
     const storedUser = localStorage.getItem('trackingUser');
-    const storedAdmin = localStorage.getItem('trackingAdmin');
     
     if (storedUser) {
       setIsLoggedIn(true);
-      setUsername(storedUser);
-      setIsAdmin(storedAdmin === 'true');
       fetchTasks();
     }
   }, []);
@@ -173,10 +166,8 @@ export default function Home() {
     fetchTasks();
   };
 
-  const handleLogin = (user: string, admin: boolean) => {
+  const handleLogin = () => {
     setIsLoggedIn(true);
-    setUsername(user);
-    setIsAdmin(admin);
     fetchTasks();
   };
 
@@ -184,8 +175,6 @@ export default function Home() {
     localStorage.removeItem('trackingUser');
     localStorage.removeItem('trackingAdmin');
     setIsLoggedIn(false);
-    setIsAdmin(false);
-    setUsername('');
     window.location.reload();
   };
 
@@ -272,9 +261,6 @@ export default function Home() {
     <PageTransition className="min-h-screen bg-[var(--color-background)]">
       {/* Modern Header */}
       <Header
-        onRefresh={fetchTasks}
-        isRefreshing={loading}
-        lastRefresh={lastRefresh}
         onLogout={handleLogout}
       />
 
@@ -317,7 +303,6 @@ export default function Home() {
             <TaskList
               className="w-full"
               tasks={loading ? undefined : filteredTasks}
-              activeFilters={activeFilters}
               onCreateTask={handleCreateTask}
               onTaskClick={handleTaskClick}
             />

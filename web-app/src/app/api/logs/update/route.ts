@@ -47,7 +47,7 @@ export async function GET() {
       environment,
       key: filename, // Keep 'filename' for compatibility, but it's a key now
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to check update availability' },
       { status: 500 }

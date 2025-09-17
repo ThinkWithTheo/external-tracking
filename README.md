@@ -176,7 +176,7 @@ The [`/web-app`](web-app/) directory contains a **fully operational** Next.js ap
 - **✅ Priority System**: Full support for all 5 priority levels (Urgent, High, Normal, Low, None)
 - **✅ Smart Hour Calculation**: Hours tracked from subtasks only, preventing double-counting
 - **✅ Task Update Modal**: Click any task to edit its details with pre-filled data
-- **✅ Change Tracking System**: All task operations logged to Vercel Blob storage for AI review
+- **✅ Change Tracking System**: All task operations logged to Vercel Redis for AI review
 - **✅ Admin Log Editor**: Web-based editor at `/logs` for admin users to view and edit task change logs
 - **✅ Parent Task Management**: Admin-only field to change task parent/subtask relationships
 
@@ -199,9 +199,10 @@ The [`/web-app`](web-app/) directory contains a **fully operational** Next.js ap
   - Only sends changed fields to API for efficiency
   - Handles developer field stored as numeric orderindex
   - Full field locking for non-admin users (except description)
-- **Change Tracking System (Vercel Blob Storage)**:
-  - All CREATE and UPDATE operations logged to Vercel Blob storage
-  - Unified storage across all environments (dev/staging/production)
+- **Change Tracking System (Vercel Redis)**:
+  - All CREATE and UPDATE operations logged to a durable Vercel Redis database.
+  - Solves rate limiting and race conditions present with blob storage.
+  - Separate databases for production, preview, and development environments.
   - No caching - always fetches fresh data
   - Format optimized for LLM readability with proper newline handling
   - Includes timestamp, task ID, changed fields, and comments
@@ -355,6 +356,8 @@ cd web-app
 npm install  # Installs all new UI dependencies
 cp .env.local.example .env.local
 # Edit .env.local with your ClickUp API credentials
+# To connect to the Vercel Redis log store locally, run:
+# vercel env pull .env.development.local
 npm run dev
 # Visit http://localhost:3000 to view the enhanced interface
 ```
@@ -407,7 +410,7 @@ vercel --prod
 Set the following environment variables in your Vercel dashboard:
 - `CLICKUP_API_TOKEN`: Your ClickUp API token
 - `CLICKUP_TEAM_ID`: Your ClickUp team/workspace ID
-- `BLOB_READ_WRITE_TOKEN`: Vercel Blob storage token (auto-configured when blob storage is enabled)
+- Vercel Redis Environment Variables (`REDIS_URL`, etc.): Auto-configured when you connect a Vercel Redis database to your project.
 
 #### Troubleshooting Notes
 If you encounter deployment issues in the future:
@@ -416,15 +419,14 @@ If you encounter deployment issues in the future:
 3. Check that all environment variables are properly configured
 4. The routes-manifest.json error was resolved by explicit framework configuration
 
-#### Vercel Blob Storage Integration (January 2025)
-The application now uses **Vercel Blob Storage** exclusively for persistent task change logging:
-- **Unified Storage**: All environments (dev/staging/production) use the same blob storage
-- **No Caching**: All log endpoints configured with `force-dynamic` and no-cache headers
-- **Admin Log Editor**: Available at `/logs` for admin users to view and edit logs directly
-- **Automatic Overwrite**: Blob updates use `allowOverwrite: true` to prevent conflicts
-- **Log Format**: Optimized for LLM processing with proper newline handling
+#### Vercel Redis Integration (September 2025)
+The application now uses **Vercel Redis** for persistent task change logging, replacing the previous Vercel Blob solution to solve rate limiting and race condition issues.
+- **Durable & Fast**: Uses a durable Redis store for atomic and rapid log appends.
+- **Environment Isolation**: Uses separate Redis keys for production, preview, and development environments.
+- **Local Development**: Falls back to a local file (`/logs/task-changes.md`) if no Redis environment variables are present, ensuring full offline support.
+- **Admin Log Editor**: The editor at `/logs` is fully compatible with the new Redis backend.
 
-The enhanced web app is **production-ready** with optimized build configuration, environment variable management for ClickUp API credentials, and persistent logging via Vercel Blob storage.
+The enhanced web app is **production-ready** with optimized build configuration, environment variable management for ClickUp API credentials, and persistent logging via Vercel Redis.
 
 For detailed setup instructions, see [`/web-app/README.md`](web-app/README.md).
 

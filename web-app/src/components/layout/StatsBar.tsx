@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle, Clock, AlertCircle, Users, TrendingUp, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
+import { CheckCircle, Clock, Users, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Progress } from '@/components/ui/Progress';
 import { cn } from '@/lib/utils';
 import { ProcessedTask } from '@/types/clickup';
 
@@ -146,11 +145,6 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
   // Calculate total hours and weeks
   const totalHours = totalEstimatedTime / (1000 * 60 * 60);
   const totalWeeks = assignedDevelopers > 0 ? (totalHours / 6 / 5 / assignedDevelopers) : 0;
-  
-  const formatTime = (timeInMs: number): string => {
-    const hours = Math.floor(timeInMs / (1000 * 60 * 60));
-    return `${hours}h`;
-  };
   
   const formatWeeks = (weeks: number): string => {
     if (weeks < 1) {
@@ -327,7 +321,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                       Total In Progress Hours
                     </span>
                     <span className="text-lg font-bold text-[var(--color-warning-600)]">
-                      {developers.reduce((sum, [_, data]) => sum + data.totalHours, 0).toFixed(1)}h
+                      {developers.reduce((sum, [, data]) => sum + data.totalHours, 0).toFixed(1)}h
                     </span>
                   </div>
                 </div>
@@ -502,7 +496,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                       Total Urgent Hours
                     </span>
                     <span className="text-lg font-bold text-[var(--color-error-600)]">
-                      {developers.reduce((sum, [_, data]) => sum + data.totalHours, 0).toFixed(1)}h
+                      {developers.reduce((sum, [, data]) => sum + data.totalHours, 0).toFixed(1)}h
                     </span>
                   </div>
                 </div>
@@ -677,7 +671,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                       Total High Priority Hours
                     </span>
                     <span className="text-lg font-bold text-[var(--color-warning-600)]">
-                      {developers.reduce((sum, [_, data]) => sum + data.totalHours, 0).toFixed(1)}h
+                      {developers.reduce((sum, [, data]) => sum + data.totalHours, 0).toFixed(1)}h
                     </span>
                   </div>
                 </div>

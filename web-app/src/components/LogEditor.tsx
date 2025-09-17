@@ -72,10 +72,10 @@ export default function LogEditor() {
         // Clear success message after 3 seconds
         setTimeout(() => setMessage(null), 3000);
       } else {
-        const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Failed to save logs' });
+        const errorData = await response.json();
+        setMessage({ type: 'error', text: errorData.error || 'Failed to save logs' });
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Error saving logs' });
     } finally {
       setSaving(false);

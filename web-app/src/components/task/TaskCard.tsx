@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, Clock, Calendar, MessageCircle, User, Flag, MoreHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, Calendar, MessageCircle, User, MoreHorizontal } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Badge, StatusBadge, PriorityBadge } from '@/components/ui/Badge';
+import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Progress } from '@/components/ui/Progress';
@@ -39,17 +39,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
   ).length;
   const subtaskProgress = hasSubtasks ? (completedSubtasks / task.subtasks.length) * 100 : 0;
 
-  const getPriorityIcon = (priority?: { name: string; color: string }) => {
-    if (!priority) return null;
-    
-    const priorityName = priority.name.toLowerCase();
-    if (priorityName === 'urgent' || priorityName === 'high') {
-      return <Flag className="h-3 w-3" />;
-    }
-    return null;
-  };
-
-  const isOverdue = task.dueDate && new Date(parseInt(task.dueDate)) < new Date() && 
+  const isOverdue = task.dueDate && new Date(parseInt(task.dueDate)) < new Date() &&
     !task.status.toLowerCase().includes('done');
 
   return (
@@ -264,7 +254,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                   "auto-rows-fr"
                 )}
               >
-                {task.subtasks.map((subtask, index) => (
+                {task.subtasks.map((subtask) => (
                   <motion.div
                     key={subtask.id}
                     variants={{
@@ -309,7 +299,6 @@ const TaskGrid: React.FC<TaskGridProps> = ({
   tasks,
   expandedTasks,
   onToggleExpand,
-  onTaskClick,
   className
 }) => {
   if (tasks.length === 0) {
@@ -342,7 +331,7 @@ const TaskGrid: React.FC<TaskGridProps> = ({
       }}
       className={cn("space-y-6", className)}
     >
-      {tasks.map((task, index) => (
+      {tasks.map((task) => (
         <motion.div
           key={task.id}
           variants={{

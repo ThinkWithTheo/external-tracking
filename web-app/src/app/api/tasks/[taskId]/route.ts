@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clickupAPI } from '@/lib/clickup-api';
-import { ClickUpCustomField, TaskUpdateData } from '@/types/clickup';
+import { TaskUpdateData } from '@/types/clickup';
 import { logTaskChange } from '@/lib/blob-logger';
 
 export async function PUT(

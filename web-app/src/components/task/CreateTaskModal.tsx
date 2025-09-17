@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, Flag, Plus, FolderTree, Lock } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 import { TaskCreateData } from '@/types/clickup';
 
@@ -41,8 +40,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [statuses, setStatuses] = useState<Array<{ id: string; status: string; color: string }>>([]);
-  const [teamMembers, setTeamMembers] = useState<Array<{ id: number; username: string }>>([]);
-  const [customFields, setCustomFields] = useState<Array<{ id: string; name: string; type: string }>>([]);
   const [developerOptions, setDeveloperOptions] = useState<Array<{ id: string | number; name: string; color?: string }>>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCreationAllowed, setIsCreationAllowed] = useState(false);
@@ -76,7 +73,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       const response = await fetch('/api/tasks/developers');
       if (response.ok) {
         const data = await response.json();
-        setDeveloperOptions(data.developers || []);
+        const sortedDevelopers = (data.developers || []).sort((a: { name: string; }, b: { name: string; }) => a.name.localeCompare(b.name));
+        setDeveloperOptions(sortedDevelopers);
       }
 
       // Use ClickUp status names based on the available statuses
@@ -174,7 +172,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       onTaskCreated();
       onClose();
     } catch (error: unknown) {
-      const apiError = error as { message?: string };
       console.error('Error creating subtask:', error);
       const submitError = error as { message?: string };
       setErrors({ submit: submitError.message || 'Failed to create subtask' });
@@ -351,14 +348,19 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             <User className="w-4 h-4 inline mr-1" />
             Developer
           </label>
-          <input
-            type="text"
+          <select
             value={formData.developer}
             onChange={(e) => handleInputChange('developer', e.target.value)}
-            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
-            placeholder="Enter developer name..."
+            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
             disabled={loading || !isCreationAllowed}
-          />
+          >
+            <option value="">Select developer...</option>
+            {developerOptions.map((dev) => (
+              <option key={dev.id} value={dev.name}>
+                {dev.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Error Message */}

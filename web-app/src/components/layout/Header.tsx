@@ -8,17 +8,11 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface HeaderProps {
-  onRefresh?: () => void;
-  isRefreshing?: boolean;
-  lastRefresh?: Date | null;
   className?: string;
   onLogout?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
-  onRefresh,
-  isRefreshing = false,
-  lastRefresh,
   className,
   onLogout
 }) => {

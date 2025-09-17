@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Clock, User, Flag, Save, Loader2, Lock } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -72,9 +72,10 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
     if (isOpen && task) {
       loadTaskData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, task]);
 
-  const loadTaskData = async () => {
+  const loadTaskData = useCallback(async () => {
     if (!task) return;
     
     setLoadingData(true);
@@ -83,7 +84,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
       const response = await fetch('/api/tasks/developers');
       if (response.ok) {
         const data = await response.json();
-        setDeveloperOptions(data.developers || []);
+        const sortedDevelopers = (data.developers || []).sort((a: { name: string; }, b: { name: string; }) => a.name.localeCompare(b.name));
+        setDeveloperOptions(sortedDevelopers);
       }
 
       // Fetch all tasks to get parent task options
@@ -93,7 +95,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         // Filter out subtasks and the current task itself to get only parent tasks
         const availableParents = tasksData.tasks
           .filter((t: { isSubtask: boolean; id: string }) => !t.isSubtask && t.id !== task.id)
-          .map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }));
+          .map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }))
+          .sort((a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name));
         setParentTasks(availableParents);
       }
 
@@ -227,7 +230,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
     } finally {
       setLoadingData(false);
     }
-  };
+  }, [task]);
 
   const handleInputChange = (field: keyof TaskFormData, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -555,14 +558,19 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
               <User className="w-4 h-4 inline mr-1" />
               Developer
             </label>
-            <input
-              type="text"
+            <select
               value={formData.developer}
               onChange={(e) => handleInputChange('developer', e.target.value)}
-              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
-              placeholder="Enter developer name..."
+              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
               disabled={loading || !isFullEditAllowed}
-            />
+            >
+              <option value="">Select developer...</option>
+              {developerOptions.map((dev) => (
+                <option key={dev.id} value={dev.name}>
+                  {dev.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Error Message */}
