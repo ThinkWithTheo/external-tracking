@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, FileText, User, Shield, Download } from 'lucide-react';
+import { LogOut, FileText, User, Shield, Download, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
@@ -39,6 +39,11 @@ const Header: React.FC<HeaderProps> = ({
   const handleViewLog = () => {
     // Open the markdown log in a new tab
     window.open('/api/logs/markdown', '_blank');
+  };
+
+  const handleEditLogs = () => {
+    // Navigate to the logs editor page
+    window.location.href = '/logs';
   };
 
   const handleDownloadLLMReport = () => {
@@ -107,6 +112,17 @@ const Header: React.FC<HeaderProps> = ({
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   View Log
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleEditLogs}
+                  aria-label="Edit logs"
+                  title="Edit task change logs"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Logs
                 </Button>
 
                 <Button

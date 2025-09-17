@@ -58,7 +58,16 @@ interface LogEntry {
 function formatLogEntry(entry: LogEntry): string {
   const changesList = Object.entries(entry.changes)
     .filter(([key]) => key !== 'custom_fields' && key !== 'parent')
-    .map(([key, value]) => `  - ${key}: ${JSON.stringify(value)}`)
+    .map(([key, value]) => {
+      // Handle string values specially to preserve formatting
+      if (typeof value === 'string') {
+        // Remove trailing newlines and wrap in quotes
+        const cleanValue = value.replace(/\n+$/, '');
+        return `  - ${key}: "${cleanValue}"`;
+      }
+      // For non-strings, use JSON.stringify
+      return `  - ${key}: ${JSON.stringify(value)}`;
+    })
     .join('\n');
   
   return `\n## ${entry.action} Task ${entry.taskId} - ${entry.timestamp}\n${changesList}${entry.comment ? `\nComment: ${entry.comment}` : ''}\n`;
