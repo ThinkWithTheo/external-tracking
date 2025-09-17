@@ -46,10 +46,6 @@ export async function GET(request: NextRequest) {
         if (developerMap[value]) {
           return developerMap[value];
         }
-        // Check if the value itself is already a developer name
-        if (value === 'Young' || value === 'Swezey' || value === 'Jacob' || value === 'Irtaza' || value === 'Hamza') {
-          return value;
-        }
         // If not found and it's a number, show as Developer X
         if (!isNaN(Number(value))) {
           return `Developer ${value}`;
@@ -72,50 +68,38 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const nowUTC = now.toISOString();
     
-    // Calculate last standup time (10 AM CST = 3 PM UTC or 4 PM UTC depending on DST)
-    const getLastStandupTime = (date: Date): Date => {
+    // Calculate the start of the review period: 11 AM CST on the previous business day.
+    const getReviewStartTime = (date: Date): Date => {
+      const reviewStart = new Date(date);
       const day = date.getDay();
-      const lastStandup = new Date(date);
-      
-      // Determine if we need to look at today's or yesterday's standup
-      const currentHour = date.getUTCHours();
-      const currentMinutes = date.getUTCMinutes();
-      const currentTimeInMinutes = currentHour * 60 + currentMinutes;
-      
-      // 10 AM CST = 4 PM UTC (during CST) or 3 PM UTC (during CDT)
-      // For simplicity, we'll use 3 PM UTC (CDT) as the cutoff since it's currently CDT
-      const standupHourUTC = 15; // 3 PM UTC = 10 AM CDT
-      const standupTimeInMinutes = standupHourUTC * 60;
-      
-      // Add a 3-hour buffer after standup for updates made during/after the meeting
-      // This prevents showing updates from the meeting itself as "changes since last standup"
-      const bufferHours = 3;
-      const bufferEndTimeInMinutes = standupTimeInMinutes + (bufferHours * 60); // 6 PM UTC = 1 PM CDT
-      
-      if (currentTimeInMinutes < standupTimeInMinutes) {
-        // Before today's standup, look at previous business day's standup
-        if (day === 0) { // Sunday
-          lastStandup.setUTCDate(date.getUTCDate() - 2); // Friday
-        } else if (day === 1) { // Monday
-          lastStandup.setUTCDate(date.getUTCDate() - 3); // Friday
-        } else {
-          lastStandup.setUTCDate(date.getUTCDate() - 1); // Previous day
-        }
-      } else if (currentTimeInMinutes >= bufferEndTimeInMinutes) {
-        // After today's standup + buffer, use today's standup end time (standup + buffer)
-        // This means changes made during the meeting won't show up tomorrow
-        lastStandup.setUTCHours(standupHourUTC + bufferHours, 0, 0, 0);
-        return lastStandup;
+
+      // Set time to 11:00 AM America/Chicago
+      // Note: We set the time in the local timezone of the server, then convert.
+      // This is a bit tricky with UTC dates. A better way is to set UTC hours directly.
+      // 11 AM CDT = 16:00 UTC. 11 AM CST = 17:00 UTC.
+      // Let's assume CDT for now.
+      const reviewHourUTC = 16; // 11 AM CDT
+
+      // If it's Monday, the review period starts on Friday at 11 AM.
+      if (day === 1) { // Monday
+        reviewStart.setUTCDate(date.getUTCDate() - 3);
       }
-      // else: During standup or buffer period, still use previous day's standup
-      
-      // Set to standup time + buffer (to exclude meeting updates)
-      lastStandup.setUTCHours(standupHourUTC + bufferHours, 0, 0, 0);
-      return lastStandup;
+      // If it's Sunday, starts on Friday.
+      else if (day === 0) { // Sunday
+        reviewStart.setUTCDate(date.getUTCDate() - 2);
+      }
+      // Otherwise, it starts on the previous day.
+      else {
+        reviewStart.setUTCDate(date.getUTCDate() - 1);
+      }
+
+      // Set the time to 11:00 AM CST/CDT (16:00 UTC for CDT)
+      reviewStart.setUTCHours(reviewHourUTC, 0, 0, 0);
+      return reviewStart;
     };
-    
-    const lastStandupTime = getLastStandupTime(now);
-    const lastStandupTimeUTC = lastStandupTime.toISOString();
+
+    const reviewStartTime = getReviewStartTime(now);
+    const reviewStartTimeUTC = reviewStartTime.toISOString();
     
     // Get log file content from blob or local
     let logContent = '';
@@ -135,7 +119,7 @@ export async function GET(request: NextRequest) {
           const timestampMatch = line.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
           if (timestampMatch) {
             const logDate = new Date(timestampMatch[1]);
-            captureRecent = logDate >= lastStandupTime;
+            captureRecent = logDate >= reviewStartTime;
           }
         }
         
@@ -144,7 +128,7 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      recentLogContent = recentLines.length > 0 ? recentLines.join('\n') : 'No changes since last standup.';
+      recentLogContent = recentLines.length > 0 ? recentLines.join('\n') : 'No changes since the last review period.';
       
       // Also keep last 1000 lines for full context
       const last1000Lines = lines.slice(-1000).join('\n');
@@ -247,25 +231,95 @@ export async function GET(request: NextRequest) {
       return daysSinceUpdate > 3; // More than 3 days
     });
 
+    // Get tasks with recent status changes, new tasks, and completed tasks
+    const newTasks = tasks.filter(task => {
+      if (!task.date_created) return false;
+      const createdDate = new Date(parseInt(task.date_created));
+      return createdDate >= reviewStartTime;
+    });
+
+    const recentlyCompletedTasks = tasks.filter(task => {
+      if (!task.date_done) return false;
+      const doneDate = new Date(parseInt(task.date_done));
+      return doneDate >= reviewStartTime;
+    });
+
+    const recentlyStartedTasks = tasks.filter(task => {
+      if (!task.date_updated || !task.status?.status?.toLowerCase().includes('progress')) return false;
+      const updatedDate = new Date(parseInt(task.date_updated));
+      // This is a proxy: assumes the last update was the move to "in progress"
+      return updatedDate >= reviewStartTime;
+    });
+
+    // --- Slack Message Generation ---
+    // Dynamically create a map for Slack user handles from the developer list
+    const slackUserMap: Record<string, string> = {};
+    Object.values(developerMap).forEach(name => {
+      // Creates a mapping from 'Dev Name' to 'dev.name' for Slack @mentions.
+      if (name && !slackUserMap[name]) {
+        slackUserMap[name] = name.toLowerCase().replace(/\s+/g, '.');
+      }
+    });
+
+    const developerTalkingPoints: Record<string, string[]> = {};
+
+    // Collect talking points for each developer (urgent, stale, or in-progress)
+    inProgressTasks.forEach(task => {
+      const devField = task.custom_fields?.find(f => f.name?.toLowerCase().includes('developer'));
+      const devName = devField ? getDeveloperName(devField) : 'Unassigned';
+      
+      if (devName !== 'Unassigned') {
+        const isUrgent = task.priority?.priority?.toLowerCase() === 'urgent';
+        const isStale = staleInProgressTasks.some(staleTask => staleTask.id === task.id);
+
+        // We only want to prompt them about urgent or stale tasks
+        if (isUrgent || isStale) {
+          if (!developerTalkingPoints[devName]) {
+            developerTalkingPoints[devName] = [];
+          }
+          let point = `- ${task.name}`;
+          if (isUrgent && isStale) {
+            point += ' (🔥 Urgent & ⏰ Stale)';
+          } else if (isUrgent) {
+            point += ' (🔥 Urgent)';
+          } else if (isStale) {
+            point += ' (⏰ Stale)';
+          }
+          developerTalkingPoints[devName].push(point);
+        }
+      }
+    });
+
+    let slackMessage = `*Good morning!* ☀️ Here is your daily review summary.\n\nPlease be prepared to discuss your urgent/stale tasks:`;
+
+    Object.entries(developerTalkingPoints).forEach(([dev, points]) => {
+      const slackHandle = slackUserMap[dev] ? `<@${slackUserMap[dev]}>` : `*${dev}*`;
+      slackMessage += `\n\n${slackHandle}:\n${points.join('\n')}`;
+    });
+
+    const slackBlock = `## 📋 SLACK MESSAGE TO COPY
+\`\`\`
+${slackMessage}
+\`\`\`
+---
+`;
+    // --- End Slack Message Generation ---
+
     // Generate the markdown report
-    const report = `# Daily Standup Task Analysis Report
+    const report = `${slackBlock}# Daily Review Analysis Report
 Generated: ${nowUTC}
-Current Time (UTC): ${nowUTC}
 Current Time (CST/CDT): ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
-Daily Standup Time: 10:00 AM CST/CDT (15:00 UTC during CDT, 16:00 UTC during CST)
-Last Standup: ${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
+Review Period Start: ${reviewStartTime.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
 
-## PROMPT FOR DAILY STANDUP ANALYSIS
+## PROMPT FOR DAILY REVIEW ANALYSIS
 
-You are analyzing a software development team's task management data for their ${now.toLocaleDateString('en-US', { weekday: 'long' })} morning standup meeting at 10 AM CST/CDT.
+You are analyzing a software development team's task management data for their daily review meeting.
 
 **IMPORTANT CONTEXT:**
-- The current report was generated at: ${nowUTC}
-- Your daily standup is at 10:00 AM CST/CDT (which is 15:00 UTC during CDT, 16:00 UTC during CST)
-- The logs below show changes since: ${lastStandupTimeUTC}
-  - This includes a 3-hour buffer after standup meetings to exclude updates made during/after the meeting
-  - This prevents rehashing updates that were discussed in yesterday's meeting
-- All timestamps in the logs are in UTC format (ISO 8601)
+- The report was generated at: ${nowUTC}
+- The review period is from **11:00 AM CST/CDT on the previous business day** to now.
+- The logs below show changes since: ${reviewStartTimeUTC}
+- All timestamps are in UTC format (ISO 8601).
 - Assume developers have a capacity of 6 productive hours per day.
 
 **IMPORTANT: Review the COMPLETE TASK TABLE and the DAILY REVIEW section below. These are your primary data sources.**
@@ -273,8 +327,8 @@ You are analyzing a software development team's task management data for their $
 Based on the data, please provide:
 
 ### 1. DAILY REVIEW ANALYSIS
-Review the 'CHANGES SINCE LAST STANDUP' log and the list of 'CURRENTLY IN-PROGRESS TASKS'.
-- What key activities occurred since the last standup (${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago' })})?
+Review the 'CHANGES SINCE LAST REVIEW' log and the list of 'CURRENTLY IN-PROGRESS TASKS'.
+- What key activities occurred since the last review period started (${reviewStartTime.toLocaleString('en-US', { timeZone: 'America/Chicago' })})?
 - Are there any completed tasks or regressions mentioned in the logs?
 - Do the in-progress tasks align with the team's current priorities?
 
@@ -332,11 +386,10 @@ ${tasks
 
 ## DAILY REVIEW
 
-### CHANGES SINCE LAST STANDUP
-**Last Standup**: ${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
-**Changes Tracked From**: ${lastStandupTimeUTC} (includes 3-hour post-meeting buffer)
+### CHANGES SINCE LAST REVIEW
+**Review Period Start**: ${reviewStartTime.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
+**Changes Tracked From**: ${reviewStartTimeUTC}
 **Current Time (UTC)**: ${nowUTC}
-**Note**: Updates made during/after standup meetings are excluded to prevent rehashing
 
 \`\`\`markdown
 ${recentLogContent}
@@ -350,6 +403,23 @@ ${inProgressTasks.map(task => {
   return `- **${task.name}** (${devName}, ${hours}h)`;
 }).join('\n')}
 
+### 🚀 KEY CHANGES SINCE LAST REVIEW
+- **New Tasks Created**: ${newTasks.length}
+- **Tasks Started (Moved to In Progress)**: ${recentlyStartedTasks.length}
+- **Tasks Completed**: ${recentlyCompletedTasks.length}
+
+${newTasks.length > 0 ? `
+**New Tasks:**
+${newTasks.map(t => `- ${t.name}`).join('\n')}
+` : ''}
+${recentlyStartedTasks.length > 0 ? `
+**Started Tasks:**
+${recentlyStartedTasks.map(t => `- ${t.name}`).join('\n')}
+` : ''}
+${recentlyCompletedTasks.length > 0 ? `
+**Completed Tasks:**
+${recentlyCompletedTasks.map(t => `- ${t.name}`).join('\n')}
+` : ''}
 
 ## EXECUTIVE SUMMARY
 
@@ -573,7 +643,7 @@ ${logContent}
 ## FOCUS AREAS FOR TODAY
 
 Please analyze the data above and provide:
-1. **Quick summary** of changes since last standup (${lastStandupTime.toLocaleString('en-US', { timeZone: 'America/Chicago', timeStyle: 'short' })} on ${lastStandupTime.toLocaleDateString('en-US', { weekday: 'long' })})
+1. **Quick summary** of changes since the review period started (${reviewStartTime.toLocaleString('en-US', { timeZone: 'America/Chicago', timeStyle: 'short' })} on ${reviewStartTime.toLocaleDateString('en-US', { weekday: 'long' })})
 2. **Urgent tasks stagnant 2+ days** - List Task IDs and developers
 3. **Critical unassigned urgent work** - Task IDs that need immediate assignment
 4. **Developer capacity concerns** - Who's over 6 productive hours today?
