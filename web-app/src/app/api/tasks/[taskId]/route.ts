@@ -27,6 +27,7 @@ export async function PUT(
     if (body.priority !== undefined) updateData.priority = body.priority;
     if (body.due_date !== undefined) updateData.due_date = body.due_date;
     if (body.time_estimate !== undefined) updateData.time_estimate = body.time_estimate;
+    if (body.parent !== undefined) updateData.parent = body.parent;
     
     // Handle developer custom field mapping
     if (body.developer !== undefined && developerField) {

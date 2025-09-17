@@ -176,7 +176,8 @@ The [`/web-app`](web-app/) directory contains a **fully operational** Next.js ap
 - **✅ Priority System**: Full support for all 5 priority levels (Urgent, High, Normal, Low, None)
 - **✅ Smart Hour Calculation**: Hours tracked from subtasks only, preventing double-counting
 - **✅ Task Update Modal**: Click any task to edit its details with pre-filled data
-- **✅ Change Tracking System**: All task operations logged to markdown file for AI review
+- **✅ Change Tracking System**: All task operations logged to Vercel Blob storage for AI review
+- **✅ Admin Log Editor**: Web-based editor at `/logs` for admin users to view and edit task change logs
 
 ### 🎨 Latest Updates (January 2025)
 
@@ -192,10 +193,13 @@ The [`/web-app`](web-app/) directory contains a **fully operational** Next.js ap
   - Only sends changed fields to API for efficiency
   - Handles developer field stored as numeric orderindex
   - Does NOT move tasks to different parent
-- **Change Tracking System**:
-  - All CREATE and UPDATE operations logged to `/web-app/logs/task-changes.md`
-  - Format optimized for LLM readability
+- **Change Tracking System (Vercel Blob Storage)**:
+  - All CREATE and UPDATE operations logged to Vercel Blob storage
+  - Unified storage across all environments (dev/staging/production)
+  - No caching - always fetches fresh data
+  - Format optimized for LLM readability with proper newline handling
   - Includes timestamp, task ID, changed fields, and comments
+  - Admin log editor available at `/logs` for viewing and editing logs
   - Example format:
     ```markdown
     ## UPDATE Task 86b6pf2an - 2025-01-15T23:00:00.000Z
@@ -397,6 +401,7 @@ vercel --prod
 Set the following environment variables in your Vercel dashboard:
 - `CLICKUP_API_TOKEN`: Your ClickUp API token
 - `CLICKUP_TEAM_ID`: Your ClickUp team/workspace ID
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blob storage token (auto-configured when blob storage is enabled)
 
 #### Troubleshooting Notes
 If you encounter deployment issues in the future:
@@ -405,7 +410,15 @@ If you encounter deployment issues in the future:
 3. Check that all environment variables are properly configured
 4. The routes-manifest.json error was resolved by explicit framework configuration
 
-The enhanced web app is **production-ready** with optimized build configuration and environment variable management for ClickUp API credentials.
+#### Vercel Blob Storage Integration (January 2025)
+The application now uses **Vercel Blob Storage** exclusively for persistent task change logging:
+- **Unified Storage**: All environments (dev/staging/production) use the same blob storage
+- **No Caching**: All log endpoints configured with `force-dynamic` and no-cache headers
+- **Admin Log Editor**: Available at `/logs` for admin users to view and edit logs directly
+- **Automatic Overwrite**: Blob updates use `allowOverwrite: true` to prevent conflicts
+- **Log Format**: Optimized for LLM processing with proper newline handling
+
+The enhanced web app is **production-ready** with optimized build configuration, environment variable management for ClickUp API credentials, and persistent logging via Vercel Blob storage.
 
 For detailed setup instructions, see [`/web-app/README.md`](web-app/README.md).
 

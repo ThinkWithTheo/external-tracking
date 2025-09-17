@@ -279,6 +279,7 @@ export interface TaskUpdateData {
   }>;
   developer?: string;
   comment?: string;
+  parent?: string;
 }
 
 export interface ApiError {

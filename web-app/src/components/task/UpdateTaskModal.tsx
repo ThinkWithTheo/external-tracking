@@ -23,6 +23,7 @@ interface TaskFormData {
   dueDate: string;
   timeEstimate: string;
   developer: string;
+  parent: string;
 }
 
 const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
@@ -38,7 +39,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
     priority: null,
     dueDate: '',
     timeEstimate: '',
-    developer: ''
+    developer: '',
+    parent: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -48,6 +50,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [originalData, setOriginalData] = useState<TaskFormData | null>(null);
   const [isFullEditAllowed, setIsFullEditAllowed] = useState(false);
+  const [parentTasks, setParentTasks] = useState<Array<{ id: string; name: string }>>([]);
 
   // Check if user has admin privileges for full editing
   useEffect(() => {
@@ -82,6 +85,17 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
       if (response.ok) {
         const data = await response.json();
         setDeveloperOptions(data.developers || []);
+      }
+
+      // Fetch all tasks to get parent task options
+      const tasksResponse = await fetch('/api/tasks');
+      if (tasksResponse.ok) {
+        const tasksData = await tasksResponse.json();
+        // Filter out subtasks and the current task itself to get only parent tasks
+        const availableParents = tasksData.tasks
+          .filter((t: any) => !t.isSubtask && t.id !== task.id)
+          .map((t: any) => ({ id: t.id, name: t.name }));
+        setParentTasks(availableParents);
       }
 
       // Use ClickUp status names based on the available statuses
@@ -202,7 +216,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         priority: priorityValue,
         dueDate: dueDateString,
         timeEstimate: timeEstimateHours,
-        developer: developerValue
+        developer: developerValue,
+        parent: task.parent || ''
       };
 
       setFormData(taskFormData);
@@ -272,6 +287,10 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
       changes.developer = formData.developer || undefined;
     }
     
+    if (formData.parent !== originalData.parent) {
+      changes.parent = formData.parent || undefined;
+    }
+    
     return changes;
   };
 
@@ -331,7 +350,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         priority: null,
         dueDate: '',
         timeEstimate: '',
-        developer: ''
+        developer: '',
+        parent: ''
       });
       setOriginalData(null);
       setErrors({});
@@ -360,16 +380,42 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
             <div className="text-sm text-blue-800">
               <span className="font-medium">Task ID:</span> {task.id}
             </div>
-            {task.parent && (
-              <div className="text-sm text-blue-700 mt-1">
-                This is a subtask. Parent task will not be changed.
-              </div>
-            )}
             {!isFullEditAllowed && (
               <div className="text-sm text-orange-700 mt-2 flex items-center">
                 <Lock className="w-3 h-3 mr-1" />
                 <span className="font-medium">Limited Edit Mode:</span> Only description can be updated
               </div>
+            )}
+          </div>
+
+          {/* Parent Task - At the top as requested */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+              Parent Task
+              {!isFullEditAllowed && (
+                <span className="ml-2 text-xs text-[var(--color-text-muted)]">
+                  <Lock className="w-3 h-3 inline mr-1" />
+                  Admin only
+                </span>
+              )}
+            </label>
+            <select
+              value={formData.parent}
+              onChange={(e) => handleInputChange('parent', e.target.value)}
+              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
+              disabled={loading || !isFullEditAllowed}
+            >
+              <option value="">No parent (top-level task)</option>
+              {parentTasks.map((parentTask) => (
+                <option key={parentTask.id} value={parentTask.id}>
+                  {parentTask.name}
+                </option>
+              ))}
+            </select>
+            {task.parent && !isFullEditAllowed && (
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                Current parent: {parentTasks.find(p => p.id === task.parent)?.name || task.parent}
+              </p>
             )}
           </div>
 
