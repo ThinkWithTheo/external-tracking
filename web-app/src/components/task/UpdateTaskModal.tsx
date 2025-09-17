@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, Flag, Save, Loader2, Lock } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 import { ClickUpTask, TaskUpdateData } from '@/types/clickup';
 
@@ -93,8 +92,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         const tasksData = await tasksResponse.json();
         // Filter out subtasks and the current task itself to get only parent tasks
         const availableParents = tasksData.tasks
-          .filter((t: any) => !t.isSubtask && t.id !== task.id)
-          .map((t: any) => ({ id: t.id, name: t.name }));
+          .filter((t: { isSubtask: boolean; id: string }) => !t.isSubtask && t.id !== task.id)
+          .map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }));
         setParentTasks(availableParents);
       }
 

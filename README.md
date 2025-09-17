@@ -178,10 +178,11 @@ The [`/web-app`](web-app/) directory contains a **fully operational** Next.js ap
 - **✅ Task Update Modal**: Click any task to edit its details with pre-filled data
 - **✅ Change Tracking System**: All task operations logged to Vercel Blob storage for AI review
 - **✅ Admin Log Editor**: Web-based editor at `/logs` for admin users to view and edit task change logs
+- **✅ Parent Task Management**: Admin-only field to change task parent/subtask relationships
 
 ### 🎨 Latest Updates (January 2025)
 
-#### **Task Update Functionality (NEW)**
+#### **Task Update Functionality (ENHANCED January 2025)**
 - **Click-to-Edit Tasks**: Click on any task name across all sections to open the update modal
   - Works in "In Progress Tasks by Developer" section
   - Works in "Urgent Priority Tasks by Developer" section
@@ -189,10 +190,15 @@ The [`/web-app`](web-app/) directory contains a **fully operational** Next.js ap
   - Works in main Tasks table (both card and table views)
 - **Update Modal Features**:
   - Pre-fills all current task data from ClickUp
-  - Same fields as Create modal (name, description, status, priority, due date, time estimate, developer, comments)
+  - All fields available: name, description, status, priority, due date, time estimate, developer, comments
+  - **Parent Task Field (NEW)**: Located at the top of the modal
+    - Admin-only editing (requires `sdf65e4wf6ae4rew3` code)
+    - Dropdown shows all available parent tasks
+    - Allows converting subtasks to parent tasks or vice versa
+    - Non-admin users see current parent info but cannot edit
   - Only sends changed fields to API for efficiency
   - Handles developer field stored as numeric orderindex
-  - Does NOT move tasks to different parent
+  - Full field locking for non-admin users (except description)
 - **Change Tracking System (Vercel Blob Storage)**:
   - All CREATE and UPDATE operations logged to Vercel Blob storage
   - Unified storage across all environments (dev/staging/production)
