@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, list } from '@vercel/blob';
-import { getEnvironmentInfo } from '@/lib/blob-logger';
+import { overwriteLogs, getEnvironmentInfo } from '@/lib/blob-logger';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -16,54 +16,18 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Get the appropriate filename based on environment
-    const { filename } = getEnvironmentInfo();
+    await overwriteLogs(content);
     
-    // Always use blob storage if token is available
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      try {
-        // Delete old file if it exists (to ensure clean update)
-        const { blobs } = await list();
-        const existingBlob = blobs.find(blob => blob.pathname === filename);
-        
-        // Upload the new content with overwrite
-        const blob = await put(filename, content, {
-          access: 'public',
-          addRandomSuffix: false,
-          allowOverwrite: true,
-        });
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Logs updated successfully',
-          url: blob.url,
-          size: content.length,
-          filename,
-        });
-      } catch (error) {
-        console.error('Error updating blob:', error);
-        return NextResponse.json(
-          { 
-            error: 'Failed to update logs in blob storage',
-            details: error instanceof Error ? error.message : 'Unknown error'
-          },
-          { status: 500 }
-        );
-      }
-    } else {
-      // No blob token available
-      return NextResponse.json(
-        {
-          error: 'Blob storage token not configured',
-          details: 'BLOB_READ_WRITE_TOKEN environment variable is not set'
-        },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Logs updated successfully',
+      size: content.length,
+    });
+
   } catch (error) {
     console.error('Error in update logs API:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to update logs',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -81,7 +45,7 @@ export async function GET() {
       updateAvailable: true,
       storageType,
       environment,
-      filename,
+      key: filename, // Keep 'filename' for compatibility, but it's a key now
     });
   } catch (error) {
     return NextResponse.json(

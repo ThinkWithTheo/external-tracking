@@ -1,47 +1,53 @@
-import { put, list, del, head } from '@vercel/blob';
+import { createClient, RedisClientType } from 'redis';
 
-// Use different files for different environments
-const getLogFilename = () => {
+let redisClient: RedisClientType | null = null;
+
+// Create and connect a Redis client, reusing the connection
+async function getRedisClient(): Promise<RedisClientType> {
+  if (redisClient && redisClient.isOpen) {
+    return redisClient;
+  }
+  
+  redisClient = createClient({ url: process.env.REDIS_URL });
+  
+  redisClient.on('error', (err) => console.error('Redis Client Error', err));
+  
+  await redisClient.connect();
+  return redisClient;
+}
+
+// Use different keys for different environments
+const getLogKey = () => {
   const env = process.env.VERCEL_ENV || 'development';
   
   switch (env) {
     case 'production':
-      return 'task-changes.md';  // Production log file
+      return 'logs:task-changes';
     case 'preview':
-      return 'task-changes-preview.md';  // Preview/staging log file
+      return 'logs:task-changes-preview';
     default:
-      return 'task-changes-dev.md';  // Development/test log file
+      return 'logs:task-changes-dev';
   }
 };
 
-const LOG_FILENAME = getLogFilename();
+const LOG_KEY = getLogKey();
 
-/**
- * Check if we should use Vercel Blob - ALWAYS use it if token is available
- */
-function shouldUseBlobStorage(): boolean {
-  // Always use blob storage if we have the token, regardless of environment
-  return !!process.env.BLOB_READ_WRITE_TOKEN;
+function shouldUseRedisStorage(): boolean {
+  return !!process.env.REDIS_URL;
 }
 
-/**
- * Get environment info for logging
- */
 export function getEnvironmentInfo(): {
   environment: string;
-  storageType: 'blob' | 'local';
+  storageType: 'redis' | 'local';
   filename: string;
 } {
   return {
     environment: process.env.VERCEL_ENV || 'development',
-    storageType: shouldUseBlobStorage() ? 'blob' : 'local',
-    filename: LOG_FILENAME,
+    storageType: shouldUseRedisStorage() ? 'redis' : 'local',
+    filename: LOG_KEY,
   };
 }
 
-/**
- * Log entry interface
- */
 interface LogEntry {
   taskId: string;
   action: 'CREATE' | 'UPDATE';
@@ -50,20 +56,14 @@ interface LogEntry {
   comment?: string;
 }
 
-/**
- * Format a log entry to markdown
- */
 function formatLogEntry(entry: LogEntry): string {
   const changesList = Object.entries(entry.changes)
     .filter(([key]) => key !== 'custom_fields' && key !== 'parent')
     .map(([key, value]) => {
-      // Handle string values specially to preserve formatting
       if (typeof value === 'string') {
-        // Remove trailing newlines and wrap in quotes
         const cleanValue = value.replace(/\n+$/, '');
         return `  - ${key}: "${cleanValue}"`;
       }
-      // For non-strings, use JSON.stringify
       return `  - ${key}: ${JSON.stringify(value)}`;
     })
     .join('\n');
@@ -71,241 +71,104 @@ function formatLogEntry(entry: LogEntry): string {
   return `\n## ${entry.action} Task ${entry.taskId} - ${entry.timestamp}\n${changesList}${entry.comment ? `\nComment: ${entry.comment}` : ''}\n`;
 }
 
-/**
- * Append to Vercel Blob log file
- */
-async function appendToBlob(content: string): Promise<void> {
-  try {
-    // First, try to get existing content
-    let existingContent = '';
-    
-    try {
-      // List all blobs to find our log file
-      const { blobs } = await list();
-      const logBlob = blobs.find(blob => blob.pathname === LOG_FILENAME);
-      
-      if (logBlob) {
-        // Fetch the existing content
-        const response = await fetch(logBlob.url);
-        existingContent = await response.text();
-      }
-    } catch {
-      console.log('Log file does not exist yet, will create new one');
-    }
-    
-    // Append new content
-    const newContent = existingContent + content;
-    
-    // Upload the updated content - allow overwrite since we're updating
-    const blob = await put(LOG_FILENAME, newContent, {
-      access: 'public',
-      addRandomSuffix: false,
-      allowOverwrite: true,  // Allow overwriting the existing file
-    });
-    
-    console.log(`Successfully logged to Vercel Blob: ${blob.url}`);
-  } catch (error) {
-    console.error('Error logging to Vercel Blob:', error);
-    throw error; // Re-throw to handle in calling function
-  }
-}
-
-/**
- * Log to local file (for development and fallback)
- */
 async function logToLocalFile(entry: LogEntry): Promise<void> {
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
-    
-    // Always use local logs directory for development
     const logDir = path.join(process.cwd(), 'logs');
     const logFile = path.join(logDir, 'task-changes.md');
-    
-    // Try to create directory if needed (may fail in read-only environments like Vercel)
-    try {
-      await fs.mkdir(logDir, { recursive: true });
-    } catch (mkdirError) {
-      // Directory creation might fail in production (Vercel), but that's expected
-      console.warn('Could not create logs directory (expected in production):', mkdirError);
-      // Don't proceed if we can't create the directory
-      return;
-    }
-    
-    // Format and append
+    await fs.mkdir(logDir, { recursive: true });
     const logContent = formatLogEntry(entry);
     await fs.appendFile(logFile, logContent, 'utf8');
-    
     console.log(`Successfully logged to local file: ${entry.action} ${entry.taskId}`);
   } catch (error) {
     console.error('Error logging to local file:', error);
   }
 }
 
-/**
- * Main logging function
- * - In production (Vercel): Logs to Blob Store
- * - In development (local): Logs to local file only
- */
 export async function logTaskChange(
   taskId: string,
   changes: Record<string, unknown>,
   action: 'CREATE' | 'UPDATE' = 'UPDATE',
   comment?: string
 ): Promise<void> {
-  const entry: LogEntry = {
-    taskId,
-    action,
-    timestamp: new Date().toISOString(),
-    changes,
-    comment,
-  };
+  const entry: LogEntry = { taskId, action, timestamp: new Date().toISOString(), changes, comment };
   
-  if (shouldUseBlobStorage()) {
-    // Production: Use Vercel Blob
+  if (shouldUseRedisStorage()) {
     try {
+      const client = await getRedisClient();
       const logContent = formatLogEntry(entry);
-      await appendToBlob(logContent);
-      console.log(`Successfully logged to Vercel Blob: ${entry.action} ${entry.taskId}`);
+      await client.append(LOG_KEY, logContent);
+      console.log(`Successfully logged to Redis: ${entry.action} ${entry.taskId}`);
     } catch (error) {
-      // If blob fails, try local as fallback (though it may also fail in production)
-      console.error('Blob storage failed, attempting local file fallback:', error);
+      console.error('Redis failed, attempting local file fallback:', error);
       await logToLocalFile(entry);
+      throw error;
     }
   } else {
-    // Development: Use local file only
     await logToLocalFile(entry);
   }
 }
 
-/**
- * Get logs from Vercel Blob
- */
-export async function getLogsFromBlob(): Promise<string> {
-  // Always try to read from blob if token is available
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return '';
-  }
-  
-  try {
-    const { blobs } = await list();
-    const logBlob = blobs.find(blob => blob.pathname === LOG_FILENAME);
-    
-    if (logBlob) {
-      const response = await fetch(logBlob.url);
-      return await response.text();
-    }
-    
-    return '';
-  } catch (error) {
-    console.error('Error reading from Vercel Blob:', error);
-    return '';
-  }
-}
-
-/**
- * Get logs from local file
- */
 export async function getLogsFromLocal(): Promise<string> {
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
-    
     const logFile = path.join(process.cwd(), 'logs', 'task-changes.md');
-    const content = await fs.readFile(logFile, 'utf8');
-    return content;
+    return await fs.readFile(logFile, 'utf8');
   } catch {
-    console.log('No local log file found');
     return '';
   }
 }
 
-/**
- * Get all logs - ALWAYS use Blob if available
- */
 export async function getAllLogs(): Promise<string> {
-  if (shouldUseBlobStorage()) {
-    // Always use blob if token is available
-    const blobLogs = await getLogsFromBlob();
-    if (blobLogs) {
-      return blobLogs;
+  if (shouldUseRedisStorage()) {
+    try {
+      const client = await getRedisClient();
+      const logs = await client.get(LOG_KEY);
+      return logs || '';
+    } catch (error) {
+      console.error('Error reading from Redis:', error);
+      return '';
     }
-    // If blob is empty, return empty string (don't fall back to local)
-    return '';
   }
-  
-  // Only use local if no blob token
   return await getLogsFromLocal();
 }
 
-/**
- * Clear logs (mainly for testing/admin purposes)
- * Only works in production with proper auth
- */
-export async function clearLogs(): Promise<boolean> {
-  if (!shouldUseBlobStorage()) {
-    console.warn('Cannot clear blob logs from development environment');
-    return false;
-  }
-  
-  try {
-    const { blobs } = await list();
-    const logBlob = blobs.find(blob => blob.pathname === LOG_FILENAME);
-    
-    if (logBlob) {
-      await del(logBlob.url);
-      console.log('Successfully cleared blob logs');
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('Error clearing blob logs:', error);
-    return false;
+export async function overwriteLogs(content: string): Promise<void> {
+  if (shouldUseRedisStorage()) {
+    const client = await getRedisClient();
+    await client.set(LOG_KEY, content);
+  } else {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const logDir = path.join(process.cwd(), 'logs');
+    const logFile = path.join(logDir, 'task-changes.md');
+    await fs.mkdir(logDir, { recursive: true });
+    await fs.writeFile(logFile, content, 'utf8');
   }
 }
 
-/**
- * Get log metadata (size, last modified, etc.)
- */
 export async function getLogMetadata(): Promise<{
   size?: number;
-  uploadedAt?: Date;
-  url?: string;
-  source: 'blob' | 'local';
+  source: 'redis' | 'local';
 } | null> {
-  if (shouldUseBlobStorage()) {
+  if (shouldUseRedisStorage()) {
     try {
-      const { blobs } = await list();
-      const logBlob = blobs.find(blob => blob.pathname === LOG_FILENAME);
-      
-      if (logBlob) {
-        const metadata = await head(logBlob.url);
-        return {
-          size: metadata.size,
-          uploadedAt: new Date(metadata.uploadedAt),
-          url: logBlob.url,
-          source: 'blob',
-        };
-      }
+      const client = await getRedisClient();
+      const size = await client.strLen(LOG_KEY);
+      return { size, source: 'redis' };
     } catch (error) {
-      console.error('Error getting blob metadata:', error);
+      console.error('Error getting Redis metadata:', error);
     }
   }
   
-  // Try local file
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
-    
     const logFile = path.join(process.cwd(), 'logs', 'task-changes.md');
     const stats = await fs.stat(logFile);
-    
-    return {
-      size: stats.size,
-      uploadedAt: stats.mtime,
-      source: 'local',
-    };
+    return { size: stats.size, source: 'local' };
   } catch {
     return null;
   }

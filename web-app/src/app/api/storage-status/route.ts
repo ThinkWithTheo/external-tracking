@@ -13,28 +13,26 @@ export async function GET() {
         VERCEL: process.env.VERCEL || 'not set',
         VERCEL_ENV: process.env.VERCEL_ENV || 'not set',
         NODE_ENV: process.env.NODE_ENV || 'not set',
-        BLOB_TOKEN_EXISTS: !!process.env.BLOB_READ_WRITE_TOKEN,
+        REDIS_URL_EXISTS: !!process.env.REDIS_URL,
       },
       storage: {
         type: envInfo.storageType,
-        filename: envInfo.filename,
+        key: envInfo.filename,
         environment: envInfo.environment,
       },
       logFile: metadata ? {
         exists: true,
         size: metadata.size,
-        lastModified: metadata.uploadedAt,
         source: metadata.source,
-        url: metadata.url,
       } : {
         exists: false,
         message: 'No log file found'
       },
       explanation: {
-        production: 'Uses blob file: task-changes.md',
-        preview: 'Uses blob file: task-changes-preview.md',
-        development: 'Uses local file: logs/task-changes.md',
-        current: `Currently using ${envInfo.storageType} storage with file: ${envInfo.filename}`
+        production: 'Uses Redis key: logs:task-changes',
+        preview: 'Uses Redis key: logs:task-changes-preview',
+        development: 'Uses local file: logs/task-changes.md or Redis key: logs:task-changes-dev',
+        current: `Currently using ${envInfo.storageType} storage with key/file: ${envInfo.filename}`
       }
     };
     
@@ -84,13 +82,12 @@ export async function POST() {
       taskId: testTaskId,
       storage: {
         type: envInfo.storageType,
-        filename: envInfo.filename,
+        key: envInfo.filename,
         environment: envInfo.environment,
       },
       logFile: metadata ? {
         size: metadata.size,
         source: metadata.source,
-        url: metadata.url,
       } : null,
     });
   } catch (error) {

@@ -62,11 +62,22 @@ export async function PUT(
       }
     }
 
-    // Log the change before making the API call
-    await logTaskChange(taskId, body, 'UPDATE', body.comment);
-
     // Update the task using ClickUp API
     const updatedTask = await clickupAPI.updateTask(taskId, updateData);
+
+    // Log the change after a successful API call
+    try {
+      await logTaskChange(taskId, body, 'UPDATE', body.comment);
+    } catch (logError) {
+      console.error('CRITICAL: Task was updated but logging failed:', logError);
+      // Return success but with a warning that logging failed
+      return NextResponse.json({
+        success: true,
+        task: updatedTask,
+        message: 'Task updated successfully',
+        warning: 'Failed to write to the activity log.'
+      });
+    }
 
     // Add comment if provided
     if (body.comment && body.comment.trim()) {
