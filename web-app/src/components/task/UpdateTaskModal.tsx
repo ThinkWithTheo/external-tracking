@@ -113,35 +113,28 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
       setStatuses(defaultStatuses.map(status => ({ ...status, color: '#64748b' })));
       
       // Extract developer from custom fields
-      const developerField = task.custom_fields?.find(field => 
+      const developerField = task.custom_fields?.find(field =>
         field.name.toLowerCase().includes('developer')
       );
       
       let developerValue = '';
       if (developerField?.value !== undefined && developerField?.value !== null) {
         if (typeof developerField.value === 'string') {
-          developerValue = developerField.value;
+          // Find the name from the developer options based on the UUID
+          const matchingDev = developerOptions.find(d => d.id === developerField.value);
+          developerValue = matchingDev ? matchingDev.name : '';
         } else if (typeof developerField.value === 'number') {
           // The value is the orderindex of the dropdown option
-          // We need to find the matching option name from the type_config
           if (developerField.type_config?.options && Array.isArray(developerField.type_config.options)) {
             const options = developerField.type_config.options as Array<{
               orderindex?: number;
               name: string;
-              id?: string;
             }>;
             const matchingOption = options.find((opt) => opt.orderindex === developerField.value);
             if (matchingOption) {
               developerValue = matchingOption.name;
             }
           }
-        } else if (typeof developerField.value === 'object' && developerField.value !== null) {
-          const valueObj = developerField.value as {
-            name?: string;
-            username?: string;
-            value?: string;
-          };
-          developerValue = valueObj.name || valueObj.username || valueObj.value || '';
         }
       }
 
@@ -230,7 +223,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
     } finally {
       setLoadingData(false);
     }
-  }, [task]);
+  }, [task, developerOptions]);
 
   const handleInputChange = (field: keyof TaskFormData, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));

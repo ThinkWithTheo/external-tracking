@@ -29,41 +29,65 @@ export async function PUT(
     if (body.time_estimate !== undefined) updateData.time_estimate = body.time_estimate;
     if (body.parent !== undefined) updateData.parent = body.parent;
     
-    // Handle developer custom field mapping
+    // Handle developer custom field separately using the dedicated endpoint
     if (body.developer !== undefined && developerField) {
-      if (developerField.type === 'drop_down') {
-        // For dropdown fields, we need to find the option that matches the developer name
-        const options = developerField.type_config?.options || [];
-        const matchingOption = options.find((option) =>
-          option.name.toLowerCase() === body.developer.toLowerCase()
-        );
-        
-        if (matchingOption) {
-          // Use the option ID/orderindex for dropdown fields
-          updateData.custom_fields = [{
-            id: developerField.id,
-            value: matchingOption.orderindex || matchingOption.id
-          }];
-        } else if (body.developer === '') {
-          // Clear the field if empty string provided
-          updateData.custom_fields = [{
-            id: developerField.id,
-            value: null
-          }];
-        } else {
-          console.warn(`No matching developer option found for: ${body.developer}`);
+      console.log('Setting developer to:', body.developer);
+      
+      // Find the matching option for the developer
+      const options = developerField.type_config?.options || [];
+      const matchingOption = options.find((option) =>
+        option.name.toLowerCase() === body.developer.toLowerCase()
+      );
+      
+      if (matchingOption || body.developer === '') {
+        try {
+          // Use the dedicated custom field endpoint
+          const fieldUpdateResponse = await fetch(
+            `https://api.clickup.com/api/v2/task/${taskId}/field/${developerField.id}`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': process.env.CLICKUP_API_TOKEN!,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                value: matchingOption ? matchingOption.id : null
+              })
+            }
+          );
+          
+          if (!fieldUpdateResponse.ok) {
+            console.error('Failed to update developer field:', await fieldUpdateResponse.text());
+          } else {
+            console.log('Developer field updated successfully');
+          }
+        } catch (error) {
+          console.error('Error updating developer field:', error);
         }
       } else {
-        // For non-dropdown fields, use the string value directly
-        updateData.custom_fields = [{
-          id: developerField.id,
-          value: body.developer || null
-        }];
+        console.warn(`No matching developer option found for: ${body.developer}`);
       }
+      
+      // Remove developer from the main update data since we handled it separately
+      delete updateData.developer;
     }
 
-    // Update the task using ClickUp API
-    const updatedTask = await clickupAPI.updateTask(taskId, updateData);
+    // Update the task using ClickUp API (for non-custom-field updates)
+    let updatedTask;
+    if (Object.keys(updateData).length > 0) {
+      updatedTask = await clickupAPI.updateTask(taskId, updateData);
+    } else {
+      // If only updating custom fields, fetch the updated task
+      const response = await fetch(
+        `https://api.clickup.com/api/v2/task/${taskId}`,
+        {
+          headers: {
+            'Authorization': process.env.CLICKUP_API_TOKEN!
+          }
+        }
+      );
+      updatedTask = await response.json();
+    }
 
     // Log the change after a successful API call
     try {

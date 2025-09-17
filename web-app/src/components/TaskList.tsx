@@ -48,7 +48,11 @@ const TaskList: React.FC<TaskListProps> = ({
         throw new Error(data.error || 'Failed to fetch tasks');
       }
       
-      setInternalTasks(data.tasks);
+      // Filter out duplicate tasks to prevent key errors
+      const uniqueTasks = data.tasks.filter((task: ProcessedTask, index: number, self: ProcessedTask[]) =>
+        index === self.findIndex((t) => t.id === task.id)
+      );
+      setInternalTasks(uniqueTasks);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
