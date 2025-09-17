@@ -21,13 +21,25 @@ export default function LogEditor() {
       setLoading(true);
       const response = await fetch('/api/logs/markdown');
       if (response.ok) {
-        const data = await response.json();
-        setContent(data.content || '');
-        setOriginalContent(data.content || '');
+        // Check if response is JSON or plain text
+        const contentType = response.headers.get('content-type');
+        let logContent = '';
+        
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          logContent = data.content || '';
+        } else {
+          // Handle plain text response
+          logContent = await response.text();
+        }
+        
+        setContent(logContent);
+        setOriginalContent(logContent);
       } else {
         setMessage({ type: 'error', text: 'Failed to load logs' });
       }
     } catch (error) {
+      console.error('Error fetching logs:', error);
       setMessage({ type: 'error', text: 'Error loading logs' });
     } finally {
       setLoading(false);
