@@ -17,13 +17,11 @@ const getLogFilename = () => {
 const LOG_FILENAME = getLogFilename();
 
 /**
- * Check if we should use Vercel Blob (only in production/preview on Vercel)
+ * Check if we should use Vercel Blob - ALWAYS use it if token is available
  */
 function shouldUseBlobStorage(): boolean {
-  // Only use blob storage if:
-  // 1. We're running on Vercel (VERCEL env var is set)
-  // 2. We have the blob token
-  return process.env.VERCEL === '1' && !!process.env.BLOB_READ_WRITE_TOKEN;
+  // Always use blob storage if we have the token, regardless of environment
+  return !!process.env.BLOB_READ_WRITE_TOKEN;
 }
 
 /**
@@ -184,8 +182,9 @@ export async function logTaskChange(
  * Get logs from Vercel Blob
  */
 export async function getLogsFromBlob(): Promise<string> {
-  if (!shouldUseBlobStorage()) {
-    return ''; // Don't read from blob in development
+  // Always try to read from blob if token is available
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return '';
   }
   
   try {
@@ -222,18 +221,20 @@ export async function getLogsFromLocal(): Promise<string> {
 }
 
 /**
- * Get all logs (production uses Blob, development uses local)
+ * Get all logs - ALWAYS use Blob if available
  */
 export async function getAllLogs(): Promise<string> {
   if (shouldUseBlobStorage()) {
-    // Production: Try blob first, fall back to local
+    // Always use blob if token is available
     const blobLogs = await getLogsFromBlob();
     if (blobLogs) {
       return blobLogs;
     }
+    // If blob is empty, return empty string (don't fall back to local)
+    return '';
   }
   
-  // Development or fallback: Use local
+  // Only use local if no blob token
   return await getLogsFromLocal();
 }
 

@@ -17,10 +17,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Get the appropriate filename based on environment
-    const { filename, storageType } = getEnvironmentInfo();
+    const { filename } = getEnvironmentInfo();
     
-    // Check if we're using blob storage
-    if (storageType === 'blob' && process.env.BLOB_READ_WRITE_TOKEN) {
+    // Always use blob storage if token is available
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
       try {
         // Delete old file if it exists (to ensure clean update)
         const { blobs } = await list();
@@ -51,36 +51,14 @@ export async function PUT(request: NextRequest) {
         );
       }
     } else {
-      // Local file update (for development)
-      try {
-        const fs = await import('fs/promises');
-        const path = await import('path');
-        
-        const logDir = path.join(process.cwd(), 'logs');
-        const logFile = path.join(logDir, 'task-changes.md');
-        
-        // Ensure directory exists
-        await fs.mkdir(logDir, { recursive: true });
-        
-        // Write the content
-        await fs.writeFile(logFile, content, 'utf8');
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Logs updated successfully (local)',
-          size: content.length,
-          filename: 'task-changes.md',
-        });
-      } catch (error) {
-        console.error('Error updating local file:', error);
-        return NextResponse.json(
-          { 
-            error: 'Failed to update local log file',
-            details: error instanceof Error ? error.message : 'Unknown error'
-          },
-          { status: 500 }
-        );
-      }
+      // No blob token available
+      return NextResponse.json(
+        {
+          error: 'Blob storage token not configured',
+          details: 'BLOB_READ_WRITE_TOKEN environment variable is not set'
+        },
+        { status: 500 }
+      );
     }
   } catch (error) {
     console.error('Error in update logs API:', error);
