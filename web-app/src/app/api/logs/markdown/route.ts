@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAllLogs } from '@/lib/blob-logger';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   try {
@@ -13,13 +15,15 @@ export async function GET() {
       content = '# Task Changes Log\n\nNo changes recorded yet.\n';
     }
     
-    // Return raw markdown content
+    // Return raw markdown content with aggressive no-cache headers
     return new NextResponse(content, {
       status: 200,
       headers: {
         'Content-Type': 'text/markdown; charset=utf-8',
         'Content-Disposition': 'inline; filename="task-changes.md"',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Cache-Control': 'no-cache, no-store, must-revalidate, private, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
         'X-Content-Type-Options': 'nosniff',
       },
     });
@@ -35,7 +39,9 @@ export async function GET() {
       headers: {
         'Content-Type': 'text/markdown; charset=utf-8',
         'Content-Disposition': 'inline; filename="task-changes.md"',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Cache-Control': 'no-cache, no-store, must-revalidate, private, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
         'X-Content-Type-Options': 'nosniff',
       },
     });

@@ -19,7 +19,14 @@ export default function LogEditor() {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/logs/markdown');
+      // Force no cache on fetch
+      const response = await fetch('/api/logs/markdown', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        }
+      });
       if (response.ok) {
         // Check if response is JSON or plain text
         const contentType = response.headers.get('content-type');

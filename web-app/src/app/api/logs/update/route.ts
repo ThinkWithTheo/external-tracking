@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put, list } from '@vercel/blob';
 import { getEnvironmentInfo } from '@/lib/blob-logger';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function PUT(request: NextRequest) {
   try {
     const { content } = await request.json();
