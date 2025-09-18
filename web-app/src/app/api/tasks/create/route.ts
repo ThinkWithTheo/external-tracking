@@ -104,7 +104,11 @@ export async function POST(request: NextRequest) {
     if (body.developer) logData.developer = body.developer;
     
     // Add created_by field to track who created the task
-    logData.created_by = body.isAdmin ? 'Admin User' : 'Standard User';
+    if (body.username) {
+      logData.created_by = body.username;
+    } else {
+      logData.created_by = body.isAdmin ? 'Admin User' : 'Standard User';
+    }
 
     // Log the new task creation
     await logTaskChange(

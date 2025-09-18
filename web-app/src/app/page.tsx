@@ -262,6 +262,7 @@ export default function Home() {
       {/* Modern Header */}
       <Header
         onLogout={handleLogout}
+        onCreateTask={handleCreateTask}
       />
 
       {/* Main Content */}

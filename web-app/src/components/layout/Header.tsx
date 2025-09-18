@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, FileText, User, Shield, Download, Edit } from 'lucide-react';
+import { LogOut, FileText, User, Shield, Download, Edit, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
@@ -10,11 +10,13 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 interface HeaderProps {
   className?: string;
   onLogout?: () => void;
+  onCreateTask?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
   className,
-  onLogout
+  onLogout,
+  onCreateTask
 }) => {
   const [username, setUsername] = useState<string>('');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -93,6 +95,19 @@ const Header: React.FC<HeaderProps> = ({
                   </Badge>
                 )}
               </div>
+            )}
+
+            {/* New Task Button */}
+            {onCreateTask && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={onCreateTask}
+                className="hidden sm:flex"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {isAdmin ? 'New Review Item' : 'New Item'}
+              </Button>
             )}
 
             {/* Admin buttons */}
