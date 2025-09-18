@@ -46,12 +46,15 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCreationAllowed, setIsCreationAllowed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [username, setUsername] = useState<string>('');
 
   // Check if user has admin privileges for task creation
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const adminStatus = localStorage.getItem('trackingAdmin') === 'true';
+      const storedUsername = localStorage.getItem('trackingUser') || '';
       setIsAdmin(adminStatus);
+      setUsername(storedUsername);
       // All users can create tasks now, but with different permissions
       setIsCreationAllowed(true);
     }
@@ -167,6 +170,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         developer?: string;
         isAdmin: boolean;
         parentTask?: string;
+        username?: string;
       }
       
       const taskData: TaskDataPayload = {
@@ -179,6 +183,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         developer: formData.developer || undefined, // Let the server handle custom field mapping
         isAdmin: isAdmin,
         parentTask: isAdmin ? formData.parentTask : undefined, // Only send parent task if admin
+        username: username || undefined, // Send the username
       };
 
       // Create the task via API
