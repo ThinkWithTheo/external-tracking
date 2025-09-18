@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Flag, Plus, FolderTree, Lock } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, Clock, User, Flag, Plus, FolderTree } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-import { TaskCreateData } from '@/types/clickup';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -21,6 +20,7 @@ interface TaskFormData {
   dueDate: string;
   timeEstimate: string;
   developer: string;
+  parentTask?: string;
 }
 
 const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
@@ -35,20 +35,25 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     priority: null,
     dueDate: '',
     timeEstimate: '',
-    developer: ''
+    developer: '',
+    parentTask: ''
   });
 
   const [loading, setLoading] = useState(false);
   const [statuses, setStatuses] = useState<Array<{ id: string; status: string; color: string }>>([]);
   const [developerOptions, setDeveloperOptions] = useState<Array<{ id: string | number; name: string; color?: string }>>([]);
+  const [parentTasks, setParentTasks] = useState<Array<{ id: string; name: string }>>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCreationAllowed, setIsCreationAllowed] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Check if user has admin privileges for task creation
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const isAdmin = localStorage.getItem('trackingAdmin') === 'true';
-      setIsCreationAllowed(isAdmin);
+      const adminStatus = localStorage.getItem('trackingAdmin') === 'true';
+      setIsAdmin(adminStatus);
+      // All users can create tasks now, but with different permissions
+      setIsCreationAllowed(true);
     }
   }, [isOpen]); // Re-check when modal opens
 
@@ -60,14 +65,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     { id: 4, name: 'Low', color: '#a3a3a3' }
   ];
 
-  // Load data when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      loadFormData();
-    }
-  }, [isOpen]);
-
-  const loadFormData = async () => {
+  // Load form data function
+  const loadFormData = useCallback(async () => {
     try {
       // Fetch developer options from the API
       const response = await fetch('/api/tasks/developers');
@@ -75,6 +74,25 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         const data = await response.json();
         const sortedDevelopers = (data.developers || []).sort((a: { name: string; }, b: { name: string; }) => a.name.localeCompare(b.name));
         setDeveloperOptions(sortedDevelopers);
+      }
+
+      // Fetch parent tasks if admin
+      if (isAdmin) {
+        const tasksResponse = await fetch('/api/tasks');
+        if (tasksResponse.ok) {
+          const tasksData = await tasksResponse.json();
+          // Filter for parent tasks only (tasks without a parent)
+          interface TaskItem {
+            id: string;
+            name: string;
+            parent?: string;
+          }
+          const parents = tasksData.tasks
+            .filter((task: TaskItem) => !task.parent)
+            .map((task: TaskItem) => ({ id: task.id, name: task.name }))
+            .sort((a: { name: string; }, b: { name: string; }) => a.name.localeCompare(b.name));
+          setParentTasks(parents);
+        }
       }
 
       // Use ClickUp status names based on the available statuses
@@ -96,7 +114,14 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     } catch (error) {
       console.error('Error loading form data:', error);
     }
-  };
+  }, [isAdmin]);
+
+  // Load data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadFormData();
+    }
+  }, [isOpen, loadFormData]);
 
   const handleInputChange = (field: keyof TaskFormData, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -132,7 +157,19 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
     try {
       // Prepare task data
-      const taskData: TaskCreateData = {
+      interface TaskDataPayload {
+        name: string;
+        description?: string;
+        status: string;
+        priority?: number | null;
+        due_date?: number;
+        time_estimate?: number;
+        developer?: string;
+        isAdmin: boolean;
+        parentTask?: string;
+      }
+      
+      const taskData: TaskDataPayload = {
         name: formData.name,
         description: formData.description || undefined,
         status: formData.status,
@@ -140,6 +177,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         due_date: formData.dueDate ? new Date(formData.dueDate).getTime() : undefined,
         time_estimate: formData.timeEstimate ? parseInt(formData.timeEstimate) * 60 * 60 * 1000 : undefined, // Convert hours to milliseconds
         developer: formData.developer || undefined, // Let the server handle custom field mapping
+        isAdmin: isAdmin,
+        parentTask: isAdmin ? formData.parentTask : undefined, // Only send parent task if admin
       };
 
       // Create the task via API
@@ -165,7 +204,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         priority: null,
         dueDate: '',
         timeEstimate: '',
-        developer: ''
+        developer: '',
+        parentTask: ''
       });
 
       // Notify parent component
@@ -190,7 +230,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Create New Review Item"
+      title={isAdmin ? "Create New Review Item" : "Create New Item"}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -198,23 +238,42 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center space-x-2 text-blue-800">
             <FolderTree className="w-5 h-5" />
-            <span className="font-medium">Creating Review Item</span>
+            <span className="font-medium">{isAdmin ? "Creating Review Item" : "Creating New Item"}</span>
           </div>
           <p className="text-sm text-blue-700 mt-1">
-            This item will be created as a subtask under the &quot;Review&quot; parent task for organized tracking.
+            {isAdmin
+              ? "This item will be created as a subtask under your selected parent task."
+              : "This item will be created as a subtask under the \"New\" parent task for organized tracking."
+            }
           </p>
-          {!isCreationAllowed && (
-            <div className="text-sm text-red-700 mt-2 flex items-center">
-              <Lock className="w-3 h-3 mr-1" />
-              <span className="font-medium">Task creation is disabled. Special authorization required.</span>
-            </div>
-          )}
         </div>
+
+        {/* Parent Task Selection (Admin Only) */}
+        {isAdmin && (
+          <div>
+            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+              Parent Task
+            </label>
+            <select
+              value={formData.parentTask}
+              onChange={(e) => handleInputChange('parentTask', e.target.value)}
+              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
+              disabled={loading}
+            >
+              <option value="">Select parent task...</option>
+              {parentTasks.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Task Name */}
         <div>
           <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-            Review Item Name *
+            {isAdmin ? "Review Item Name *" : "Item Name *"}
           </label>
           <input
             type="text"
@@ -224,7 +283,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               "w-full px-3 py-2 border rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors",
               errors.name ? "border-[var(--color-error-500)]" : "border-[var(--color-border)]"
             )}
-            placeholder="Enter review item name..."
+            placeholder={isAdmin ? "Enter review item name..." : "Enter item name..."}
             disabled={loading || !isCreationAllowed}
           />
           {errors.name && (
@@ -247,8 +306,11 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           />
         </div>
 
-        {/* Row 1: Status and Priority */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Admin-only fields */}
+        {isAdmin && (
+          <>
+            {/* Row 1: Status and Priority */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Status */}
           <div>
             <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
@@ -303,11 +365,11 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 </button>
               ))}
             </div>
-          </div>
-        </div>
+              </div>
+            </div>
 
-        {/* Row 2: Due Date and Time Estimate */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Row 2: Due Date and Time Estimate */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Due Date */}
           <div>
             <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
@@ -339,11 +401,11 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               placeholder="e.g., 2.5"
               disabled={loading || !isCreationAllowed}
             />
-          </div>
-        </div>
+              </div>
+            </div>
 
-        {/* Developer */}
-        <div>
+            {/* Developer */}
+            <div>
           <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
             <User className="w-4 h-4 inline mr-1" />
             Developer
@@ -359,9 +421,11 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               <option key={dev.id} value={dev.name}>
                 {dev.name}
               </option>
-            ))}
-          </select>
-        </div>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
 
         {/* Error Message */}
         {errors.submit && (

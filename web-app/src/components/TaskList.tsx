@@ -29,9 +29,18 @@ const TaskList: React.FC<TaskListProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Use prop tasks if provided, otherwise fetch internally
   const tasks = propTasks || internalTasks;
+
+  // Check admin status
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const adminStatus = localStorage.getItem('trackingAdmin') === 'true';
+      setIsAdmin(adminStatus);
+    }
+  }, []);
 
   const fetchTasks = useCallback(async () => {
     // Only fetch if no tasks are provided via props
@@ -203,7 +212,7 @@ const TaskList: React.FC<TaskListProps> = ({
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
             </Button>
 
-            {/* New Review Item Button */}
+            {/* New Item Button - text changes based on admin status */}
             {onCreateTask && (
               <>
                 <Button
@@ -213,7 +222,7 @@ const TaskList: React.FC<TaskListProps> = ({
                   className="hidden sm:flex h-7 px-2"
                 >
                   <Plus className="h-3 w-3 mr-1" />
-                  New Review Item
+                  {isAdmin ? 'New Review Item' : 'New Item'}
                 </Button>
 
                 <Button
@@ -221,7 +230,7 @@ const TaskList: React.FC<TaskListProps> = ({
                   size="sm"
                   onClick={onCreateTask}
                   className="sm:hidden h-7 w-7"
-                  aria-label="Create new review item"
+                  aria-label={isAdmin ? "Create new review item" : "Create new item"}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>

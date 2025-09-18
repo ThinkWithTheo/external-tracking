@@ -179,8 +179,26 @@ The [`/web-app`](web-app/) directory contains a **fully operational** Next.js ap
 - **✅ Change Tracking System**: All task operations logged to Vercel Redis for AI review
 - **✅ Admin Log Editor**: Web-based editor at `/logs` for admin users to view and edit task change logs
 - **✅ Parent Task Management**: Admin-only field to change task parent/subtask relationships
+- **✅ Role-Based Task Creation**: Different interfaces for admin vs non-admin users
 
 ### 🎨 Latest Updates (January 2025)
+
+#### **Task Creation Functionality (ENHANCED January 2025)**
+- **Role-Based Interface**:
+  - **Non-Admin Users**:
+    - Simplified form with only "Item Name" and "Description" fields
+    - Button labeled "New Item" instead of "New Review Item"
+    - Tasks automatically created under "New" parent task
+    - No access to status, priority, due date, time estimate, or developer fields
+  - **Admin Users**:
+    - Full access to all form fields
+    - Button labeled "New Review Item"
+    - Can select any parent task from dropdown
+    - Complete control over all task properties
+- **Improved Logging**:
+  - No longer logs undefined values
+  - Tracks whether task was created by "Admin User" or "Standard User"
+  - Cleaner, more readable log entries
 
 #### **Task Update Functionality (ENHANCED January 2025)**
 - **Click-to-Edit Tasks**: Click on any task name across all sections to open the update modal
