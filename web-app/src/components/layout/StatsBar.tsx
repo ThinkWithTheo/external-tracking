@@ -103,6 +103,7 @@ const StatCard: React.FC<StatCardProps> = ({
 const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) => {
   // Start with default collapsed state to match server-side rendering
   const [isInProgressCollapsed, setIsInProgressCollapsed] = useState(true);
+  const [isNewTasksCollapsed, setIsNewTasksCollapsed] = useState(true);
   const [isReviewCollapsed, setIsReviewCollapsed] = useState(true);
   const [isUrgentCollapsed, setIsUrgentCollapsed] = useState(true);
   const [hasLoadedState, setHasLoadedState] = useState(false);
@@ -114,6 +115,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
       if (savedStates) {
         const states = JSON.parse(savedStates);
         setIsInProgressCollapsed(states.inProgress ?? true);
+        setIsNewTasksCollapsed(states.newTasks ?? true);
         setIsReviewCollapsed(states.review ?? true);
         setIsUrgentCollapsed(states.urgent ?? true);
       }
@@ -128,12 +130,13 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
     if (hasLoadedState) {
       const states = {
         inProgress: isInProgressCollapsed,
+        newTasks: isNewTasksCollapsed,
         review: isReviewCollapsed,
         urgent: isUrgentCollapsed
       };
       localStorage.setItem('taskSectionStates', JSON.stringify(states));
     }
-  }, [isInProgressCollapsed, isReviewCollapsed, isUrgentCollapsed, hasLoadedState]);
+  }, [isInProgressCollapsed, isNewTasksCollapsed, isReviewCollapsed, isUrgentCollapsed, hasLoadedState]);
   
   // Calculate statistics based on subtasks (parent tasks are just for grouping)
   const totalSubtasks = tasks.reduce((acc, task) => acc + task.subtasks.length, 0);
@@ -370,6 +373,152 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
           })()}
         </div>
       </Card>
+
+      {/* New Tasks - Only show if there are tasks under "New" parent */}
+      {(() => {
+        // Check if there are any tasks under "New" parent
+        const hasNewTasks = tasks.some(task =>
+          task.name.toLowerCase() === 'new' && task.subtasks && task.subtasks.length > 0
+        );
+        
+        if (!hasNewTasks) return null;
+        
+        return (
+          <Card className="p-4">
+            <div className="space-y-4">
+              <div
+                className="flex items-center justify-between cursor-pointer select-none"
+                onClick={() => setIsNewTasksCollapsed(!isNewTasksCollapsed)}
+              >
+                <div className="flex items-center space-x-2">
+                  {isNewTasksCollapsed ? (
+                    <ChevronRight className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                  )}
+                  <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
+                    New Tasks
+                  </h3>
+                </div>
+                <Badge variant="default" className="text-xs">
+                  Review Needed
+                </Badge>
+              </div>
+              
+              {!isNewTasksCollapsed && (() => {
+                // Collect all subtasks under "New" parent task
+                const newSubtasks: Array<{
+                  subtask: ProcessedTask;
+                  developer: string;
+                  developerColor: string;
+                }> = [];
+                
+                // Filter subtasks that belong to "New" parent task
+                tasks.forEach(task => {
+                  // Check if this is the "New" parent task
+                  if (task.name.toLowerCase() === 'new' && task.subtasks && task.subtasks.length > 0) {
+                    task.subtasks.forEach(subtask => {
+                      newSubtasks.push({
+                        subtask,
+                        developer: subtask.developer || task.developer || 'Unassigned',
+                        developerColor: subtask.developerColor || task.developerColor || '#6B7280'
+                      });
+                    });
+                  }
+                });
+                
+                // Sort subtasks alphabetically by name
+                newSubtasks.sort((a, b) => a.subtask.name.localeCompare(b.subtask.name));
+                
+                // Calculate total hours
+                const totalHours = newSubtasks.reduce((sum, item) =>
+                  sum + (item.subtask.timeEstimate || 0) / (1000 * 60 * 60), 0
+                );
+                
+                return (
+                  <div className="space-y-2">
+                    {/* Task list */}
+                    <div className="space-y-1">
+                      {newSubtasks.map((item) => {
+                        const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+                        
+                        return (
+                          <div key={`new-task-${item.subtask.id}`} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-[var(--color-surface-hover)] transition-colors gap-2">
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                              <span
+                                className={`text-sm text-[var(--color-text-primary)] truncate block ${onTaskClick ? 'cursor-pointer hover:text-[var(--color-primary-600)] transition-colors' : ''}`}
+                                onClick={onTaskClick ? () => onTaskClick(item.subtask.id) : undefined}
+                                title={item.subtask.name}
+                              >
+                                {item.subtask.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {item.developer && item.developer !== 'Unassigned' && (
+                                <div className="flex items-center gap-1">
+                                  <div
+                                    className="w-2 h-2 rounded-full"
+                                    style={{ backgroundColor: item.developerColor }}
+                                  />
+                                  <span className="text-xs text-[var(--color-text-muted)]">
+                                    {item.developer}
+                                  </span>
+                                </div>
+                              )}
+                              {item.subtask.priority && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs"
+                                  style={{
+                                    borderColor: item.subtask.priority.color,
+                                    color: item.subtask.priority.color
+                                  }}
+                                >
+                                  {item.subtask.priority.name}
+                                </Badge>
+                              )}
+                              {item.subtask.status && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs"
+                                  style={{
+                                    borderColor: item.subtask.statusColor,
+                                    color: item.subtask.statusColor
+                                  }}
+                                >
+                                  {item.subtask.status}
+                                </Badge>
+                              )}
+                              <span className="text-xs text-[var(--color-text-muted)] min-w-[2.5rem] text-right">
+                                {displayHours > 0
+                                  ? `${displayHours.toFixed(1)}h`
+                                  : '-'
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Summary */}
+                    <div className="pt-2 mt-2 border-t border-[var(--color-border)]">
+                      <div className="flex items-center justify-between px-2">
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                          Total: {newSubtasks.length} {newSubtasks.length === 1 ? 'task' : 'tasks'}
+                        </span>
+                        <span className="text-sm font-semibold text-[var(--color-primary-600)]">
+                          {totalHours > 0 ? `${totalHours.toFixed(1)}h` : 'No estimates'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Review Tasks by Developer */}
       <Card className="p-4">
