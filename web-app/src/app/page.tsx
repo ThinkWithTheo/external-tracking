@@ -318,6 +318,7 @@ export default function Home() {
               tasks={loading ? undefined : filteredTasks}
               onCreateTask={handleCreateTask}
               onTaskClick={handleTaskClick}
+              onRefresh={fetchTasks}
             />
           </motion.div>
         </SlideIn>

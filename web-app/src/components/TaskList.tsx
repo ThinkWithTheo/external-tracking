@@ -14,6 +14,7 @@ interface TaskListProps {
   tasks?: ProcessedTask[];
   onCreateTask?: () => void;
   onTaskClick?: (taskId: string) => void;
+  onRefresh?: () => void;
 }
 
 type ViewMode = 'cards' | 'table';
@@ -22,17 +23,17 @@ const TaskList: React.FC<TaskListProps> = ({
   className = '',
   tasks: propTasks,
   onCreateTask,
-  onTaskClick
+  onTaskClick,
+  onRefresh
 }) => {
-  const [internalTasks, setInternalTasks] = useState<ProcessedTask[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Use prop tasks if provided, otherwise fetch internally
-  const tasks = propTasks || internalTasks;
+  // Use prop tasks if provided, otherwise use an empty array
+  const tasks = propTasks || [];
+  const loading = !propTasks;
+  const error = null; // Error handling will be managed by the parent component
 
   // Check admin status
   useEffect(() => {
@@ -42,40 +43,11 @@ const TaskList: React.FC<TaskListProps> = ({
     }
   }, []);
 
-  const fetchTasks = useCallback(async () => {
-    // Only fetch if no tasks are provided via props
-    if (propTasks) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('/api/tasks');
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch tasks');
-      }
-      
-      // Filter out duplicate tasks to prevent key errors
-      const uniqueTasks = data.tasks.filter((task: ProcessedTask, index: number, self: ProcessedTask[]) =>
-        index === self.findIndex((t) => t.id === task.id)
-      );
-      setInternalTasks(uniqueTasks);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh();
     }
-  }, [propTasks]);
-
-  useEffect(() => {
-    if (propTasks) {
-      setLoading(false);
-    } else {
-      fetchTasks();
-    }
-  }, [propTasks, fetchTasks]);
+  };
 
   const handleToggleExpand = (taskId: string) => {
     setExpandedTasks(prev => {
@@ -89,9 +61,6 @@ const TaskList: React.FC<TaskListProps> = ({
     });
   };
 
-  const handleRefresh = () => {
-    fetchTasks();
-  };
 
   const getTotalSubtasks = () => {
     return tasks.reduce((acc, task) => acc + (task.subtasks?.length || 0), 0);

@@ -24,12 +24,22 @@ export async function GET(request: NextRequest) {
     // Process tasks for UI (comments disabled by default to reduce API calls)
     const processedTasks = await clickupAPI.processTasksForUI(rawTasks, includeComments);
 
-    return NextResponse.json({
-      success: true,
-      tasks: processedTasks,
-      totalTasks: processedTasks.length,
-      totalSubtasks: processedTasks.reduce((acc, task) => acc + task.subtasks.length, 0),
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        tasks: processedTasks,
+        totalTasks: processedTasks.length,
+        totalSubtasks: processedTasks.reduce((acc, task) => acc + task.subtasks.length, 0),
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Surrogate-Control': 'no-store',
+        },
+      }
+    );
 
   } catch (error) {
     console.error('Error in /api/tasks:', error);
