@@ -50,10 +50,16 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
   const [originalData, setOriginalData] = useState<TaskFormData | null>(null);
   const [isFullEditAllowed, setIsFullEditAllowed] = useState(false);
   const [parentTasks, setParentTasks] = useState<Array<{ id: string; name: string }>>([]);
-
-  // Check if user has admin privileges for full editing
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
+  const [comment, setComment] = useState('');
+  const [username, setUsername] = useState('');
+ 
+   // Check if user has admin privileges for full editing
+   useEffect(() => {
+     if (typeof window !== 'undefined') {
+       const storedUsername = localStorage.getItem('trackingUser');
+       if (storedUsername) {
+         setUsername(storedUsername);
+       }
       const isAdmin = localStorage.getItem('trackingAdmin') === 'true';
       setIsFullEditAllowed(isAdmin);
     }
@@ -333,10 +339,61 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
       setLoading(false);
     }
   };
-
-  const handleClose = () => {
-    if (!loading) {
-      onClose();
+ 
+   const handleSaveComment = async () => {
+     if (!task) return;
+     setLoading(true);
+     try {
+       const updateData: TaskUpdateData = {};
+       if (comment.trim() !== '') {
+         updateData.description = `${formData.description}\n\n${username} Says: ${comment}`;
+         updateData.comment = `${username} Says: ${comment}`;
+       }
+       const response = await fetch(`/api/tasks/${task.id}`, {
+         method: 'PUT',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify(updateData),
+       });
+       if (!response.ok) throw new Error('Failed to save comment');
+       onTaskUpdated();
+       onClose();
+     } catch (error) {
+       console.error('Error saving comment:', error);
+       setErrors({ submit: 'Failed to save comment' });
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
+   const handleMoveToReview = async () => {
+     if (!task) return;
+     setLoading(true);
+     try {
+       const updateData: TaskUpdateData = { status: 'IN REVIEW' };
+       if (comment.trim() !== '') {
+         updateData.description = `${formData.description}\n\n${username} Says: ${comment}`;
+         updateData.comment = `${username} Says: ${comment}`;
+       }
+       
+       const response = await fetch(`/api/tasks/${task.id}`, {
+         method: 'PUT',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify(updateData),
+       });
+       if (!response.ok) throw new Error('Failed to move to review');
+       onTaskUpdated();
+       onClose();
+     } catch (error) {
+       console.error('Error moving to review:', error);
+       setErrors({ submit: 'Failed to move to review' });
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
+   const handleClose = () => {
+     if (!loading) {
+       onClose();
       // Reset form when closing
       setFormData({
         name: '',
@@ -350,6 +407,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
       });
       setOriginalData(null);
       setErrors({});
+      setComment('');
     }
   };
 
@@ -446,9 +504,25 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
               rows={3}
               className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors resize-none"
               placeholder="Enter task description..."
-              disabled={loading}
+              disabled={loading || !isFullEditAllowed}
             />
           </div>
+
+          {!isFullEditAllowed && (
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                Add Comment
+              </label>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors resize-none"
+                placeholder="Enter your comment here..."
+                disabled={loading}
+              />
+            </div>
+          )}
 
           {/* Row 1: Status and Priority */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -583,14 +657,36 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              loading={loading}
-              disabled={loading}
-            >
-              <Save className="w-4 h-4 mr-1" />
-              Update Task
-            </Button>
+            {isFullEditAllowed ? (
+              <Button
+                type="submit"
+                loading={loading}
+                disabled={loading}
+              >
+                <Save className="w-4 h-4 mr-1" />
+                Update Task
+              </Button>
+            ) : (
+              <>
+                {formData.status !== 'IN REVIEW' && (
+                 <Button
+                   type="button"
+                   variant="success"
+                   onClick={handleMoveToReview}
+                   disabled={loading}
+                 >
+                   Move to Review
+                 </Button>
+                )}
+                <Button
+                  type="button"
+                  onClick={handleSaveComment}
+                  disabled={loading || !comment.trim()}
+                >
+                  Save
+                </Button>
+              </>
+            )}
           </div>
         </form>
       )}

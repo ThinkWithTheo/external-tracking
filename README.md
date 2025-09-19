@@ -197,8 +197,9 @@ The [`/web-app`](web-app/) directory contains a **fully operational** Next.js ap
     - Complete control over all task properties
 - **Improved Logging**:
   - No longer logs undefined values
-  - Tracks whether task was created by "Admin User" or "Standard User"
+  - Tracks the specific username of the task creator (e.g., "Jacob").
   - Cleaner, more readable log entries
+  > **IMPORTANT:** The creator's username is captured by storing it in `localStorage` (`trackingUser`) upon login and passing it from the client-side modal to the server-side creation API.
 
 #### **Task Update Functionality (ENHANCED January 2025)**
 - **Click-to-Edit Tasks**: Click on any task name across all sections to open the update modal

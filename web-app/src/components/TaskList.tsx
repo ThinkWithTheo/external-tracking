@@ -300,9 +300,9 @@ const TaskList: React.FC<TaskListProps> = ({
                   <p className="text-sm mt-1">All tasks may be closed or there might be no tasks in this list</p>
                 </div>
               ) : (
-                tasks.map((task) => (
+                tasks.map((task, index) => (
                   <TaskRow
-                    key={task.id}
+                    key={`${task.id}-${index}`}
                     task={task}
                     isExpanded={expandedTasks.has(task.id)}
                     onToggleExpand={() => handleToggleExpand(task.id)}

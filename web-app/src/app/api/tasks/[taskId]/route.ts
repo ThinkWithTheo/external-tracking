@@ -91,7 +91,18 @@ export async function PUT(
 
     // Log the change after a successful API call
     try {
-      await logTaskChange(taskId, body, 'UPDATE', body.comment);
+      const logData = { ...body };
+      if (logData.time_estimate) {
+        logData.time_estimate = `${logData.time_estimate / 3600000} hours`;
+      }
+      
+      // If a comment is present (non-admin update), replace the description with the comment for logging purposes.
+      if (body.comment) {
+        logData.description = body.comment;
+        delete logData.comment; // Clean up the temporary comment field
+      }
+
+      await logTaskChange(taskId, logData, 'UPDATE');
     } catch (logError) {
       console.error('CRITICAL: Task was updated but logging failed:', logError);
       // Return success but with a warning that logging failed
