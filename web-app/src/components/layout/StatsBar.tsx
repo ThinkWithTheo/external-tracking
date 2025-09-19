@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, Clock, Users, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -101,9 +101,39 @@ const StatCard: React.FC<StatCardProps> = ({
 };
 
 const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) => {
-  // State for collapsible sections
-  const [isUrgentCollapsed, setIsUrgentCollapsed] = useState(true);
+  // Start with default collapsed state to match server-side rendering
+  const [isInProgressCollapsed, setIsInProgressCollapsed] = useState(true);
   const [isReviewCollapsed, setIsReviewCollapsed] = useState(true);
+  const [isUrgentCollapsed, setIsUrgentCollapsed] = useState(true);
+  const [hasLoadedState, setHasLoadedState] = useState(false);
+  
+  // Load saved collapse states from localStorage on mount (client-side only)
+  useEffect(() => {
+    try {
+      const savedStates = localStorage.getItem('taskSectionStates');
+      if (savedStates) {
+        const states = JSON.parse(savedStates);
+        setIsInProgressCollapsed(states.inProgress ?? true);
+        setIsReviewCollapsed(states.review ?? true);
+        setIsUrgentCollapsed(states.urgent ?? true);
+      }
+    } catch (error) {
+      console.error('Error loading saved section states:', error);
+    }
+    setHasLoadedState(true);
+  }, []);
+  
+  // Save collapse states to localStorage whenever they change (after initial load)
+  useEffect(() => {
+    if (hasLoadedState) {
+      const states = {
+        inProgress: isInProgressCollapsed,
+        review: isReviewCollapsed,
+        urgent: isUrgentCollapsed
+      };
+      localStorage.setItem('taskSectionStates', JSON.stringify(states));
+    }
+  }, [isInProgressCollapsed, isReviewCollapsed, isUrgentCollapsed, hasLoadedState]);
   
   // Calculate statistics based on subtasks (parent tasks are just for grouping)
   const totalSubtasks = tasks.reduce((acc, task) => acc + task.subtasks.length, 0);
@@ -186,16 +216,26 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
       {/* In Progress Tasks by Developer */}
       <Card className="p-4">
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
-              In Progress Tasks by Developer
-            </h3>
+          <div
+            className="flex items-center justify-between cursor-pointer select-none"
+            onClick={() => setIsInProgressCollapsed(!isInProgressCollapsed)}
+          >
+            <div className="flex items-center space-x-2">
+              {isInProgressCollapsed ? (
+                <ChevronRight className="w-4 h-4 text-[var(--color-text-secondary)]" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
+              )}
+              <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
+                In Progress Tasks by Developer
+              </h3>
+            </div>
             <Badge variant="warning" className="text-xs">
               {inProgressSubtasks} In Progress
             </Badge>
           </div>
           
-          {(() => {
+          {!isInProgressCollapsed && (() => {
             // Collect all in-progress subtasks with their parent task names
             const inProgressSubtasksList: Array<{
               subtask: ProcessedTask;

@@ -20,7 +20,9 @@ export default function Home() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ClickUpTask | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  // Start with false to match server-side rendering, then update in useEffect
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Fetch tasks function
   const fetchTasks = async () => {
@@ -40,13 +42,13 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check login status on client side only
     const storedUser = localStorage.getItem('trackingUser');
-    
     if (storedUser) {
       setIsLoggedIn(true);
       fetchTasks();
     }
+    setIsCheckingAuth(false);
   }, []);
 
   // Filter groups configuration (removed Status filter)
@@ -180,6 +182,16 @@ export default function Home() {
 
   // Filter tasks and their subtasks based on search query and active filters
   // Filters are applied cumulatively (AND logic) - subtasks must match ALL active filters
+  
+  // Show nothing while checking auth to prevent flash
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-[var(--color-background)]">
+        {/* Empty div to prevent layout shift */}
+      </div>
+    );
+  }
+  
   // Show login modal if not logged in
   if (!isLoggedIn) {
     return (
