@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, Clock, User, Flag, Save, Loader2, Lock } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Calendar, Clock, User, Flag, Save, Loader2, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -52,6 +52,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
   const [parentTasks, setParentTasks] = useState<Array<{ id: string; name: string }>>([]);
   const [comment, setComment] = useState('');
   const [username, setUsername] = useState('');
+  const [detailsCollapsed, setDetailsCollapsed] = useState(true);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
  
    // Check if user has admin privileges for full editing
    useEffect(() => {
@@ -77,6 +79,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
   useEffect(() => {
     if (isOpen && task) {
       loadTaskData();
+      // Reset comment field when modal opens
+      setComment('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, task]);
@@ -230,6 +234,14 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
       setLoadingData(false);
     }
   }, [task, developerOptions]);
+
+  // Auto-resize textarea when content changes
+  useEffect(() => {
+    if (descriptionRef.current && isFullEditAllowed) {
+      descriptionRef.current.style.height = 'auto';
+      descriptionRef.current.style.height = `${descriptionRef.current.scrollHeight}px`;
+    }
+  }, [formData.description, isFullEditAllowed]);
 
   const handleInputChange = (field: keyof TaskFormData, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -408,6 +420,7 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
       setOriginalData(null);
       setErrors({});
       setComment('');
+      setDetailsCollapsed(true); // Reset to collapsed state
     }
   };
 
@@ -428,21 +441,18 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Task Info */}
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="text-sm text-blue-800">
-              <span className="font-medium">Task ID:</span> {task.id}
-            </div>
-            {!isFullEditAllowed && (
-              <div className="text-sm text-orange-700 mt-2 flex items-center">
-                <Lock className="w-3 h-3 mr-1" />
-                <span className="font-medium">Limited Edit Mode:</span> Only description can be updated
+          {/* Task Info - Only show for admin users */}
+          {isFullEditAllowed && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="text-sm text-blue-800">
+                <span className="font-medium">Task ID:</span> {task.id}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Parent Task - At the top as requested */}
-          <div>
+          {/* Parent Task - Only show for admin users */}
+          {isFullEditAllowed && (
+            <div>
             <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
               Parent Task
               {!isFullEditAllowed && (
@@ -469,8 +479,9 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
               <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                 Current parent: {parentTasks.find(p => p.id === task.parent)?.name || task.parent}
               </p>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Task Name */}
           <div>
@@ -493,39 +504,146 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
             )}
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors resize-none"
-              placeholder="Enter task description..."
-              disabled={loading || !isFullEditAllowed}
-            />
-          </div>
+          {/* For non-admin users, show collapsible details section */}
+          {!isFullEditAllowed ? (
+            <>
+              {/* Collapsible Details Section */}
+              <div className="border border-[var(--color-border)] rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setDetailsCollapsed(!detailsCollapsed)}
+                  className="w-full px-4 py-3 bg-[var(--color-surface-secondary)] hover:bg-[var(--color-surface-hover)] flex items-center justify-between transition-colors"
+                >
+                  <span className="text-sm font-medium text-[var(--color-text-primary)]">Details</span>
+                  {detailsCollapsed ? (
+                    <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)]" />
+                  ) : (
+                    <ChevronUp className="w-4 h-4 text-[var(--color-text-muted)]" />
+                  )}
+                </button>
+                
+                {!detailsCollapsed && (
+                  <div className="p-4 space-y-4 bg-[var(--color-surface)]">
+                    {/* Limited Edit Mode Warning */}
+                    <div className="text-sm text-orange-700 flex items-center mb-3">
+                      <Lock className="w-3 h-3 mr-1" />
+                      <span className="font-medium">Limited Edit Mode</span>
+                    </div>
+                    {/* Description (read-only for non-admin) */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                        Description
+                      </label>
+                      <div className="px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]">
+                        {formData.description || <span className="text-[var(--color-text-muted)]">No description</span>}
+                      </div>
+                    </div>
 
-          {!isFullEditAllowed && (
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-                Add Comment
-              </label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors resize-none"
-                placeholder="Enter your comment here..."
-                disabled={loading}
-              />
-            </div>
-          )}
+                    {/* Status (read-only) */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                        Status
+                      </label>
+                      <div className="px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]">
+                        {formData.status || 'Not set'}
+                      </div>
+                    </div>
 
-          {/* Row 1: Status and Priority */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Priority (read-only) */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                        Priority
+                      </label>
+                      <div className="px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface-secondary)]">
+                        {formData.priority ? (
+                          <span
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+                            style={{
+                              backgroundColor: priorities.find(p => p.id === formData.priority)?.color || '#a3a3a3'
+                            }}
+                          >
+                            <Flag className="w-3 h-3 mr-1" />
+                            {priorities.find(p => p.id === formData.priority)?.name || 'None'}
+                          </span>
+                        ) : (
+                          <span className="text-[var(--color-text-muted)]">No priority set</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Due Date (read-only) */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                        <Calendar className="w-4 h-4 inline mr-1" />
+                        Due Date
+                      </label>
+                      <div className="px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]">
+                        {formData.dueDate || <span className="text-[var(--color-text-muted)]">No due date</span>}
+                      </div>
+                    </div>
+
+                    {/* Time Estimate (read-only) */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                        <Clock className="w-4 h-4 inline mr-1" />
+                        Time Estimate
+                      </label>
+                      <div className="px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]">
+                        {formData.timeEstimate ? `${formData.timeEstimate} hours` : <span className="text-[var(--color-text-muted)]">No estimate</span>}
+                      </div>
+                    </div>
+
+                    {/* Developer (read-only) */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                        <User className="w-4 h-4 inline mr-1" />
+                        Developer
+                      </label>
+                      <div className="px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]">
+                        {formData.developer || <span className="text-[var(--color-text-muted)]">Not assigned</span>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Comment Box (always visible for non-admin) */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                  Add Comment
+                </label>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors resize-none"
+                  placeholder="Enter your comment here..."
+                  disabled={loading}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Admin view - keep existing layout */}
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                  Description
+                </label>
+                <textarea
+                  ref={descriptionRef}
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors resize-none overflow-hidden"
+                  placeholder="Enter task description..."
+                  disabled={loading || !isFullEditAllowed}
+                  style={{ minHeight: '80px' }}
+                />
+              </div>
+
+              {/* Row 1: Status and Priority */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Status */}
             <div>
               <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
@@ -580,11 +698,11 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
                   </button>
                 ))}
               </div>
-            </div>
-          </div>
+                </div>
+              </div>
 
-          {/* Row 2: Due Date and Time Estimate */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Row 2: Due Date and Time Estimate */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Due Date */}
             <div>
               <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
@@ -616,11 +734,11 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
                 placeholder="e.g., 2.5"
                 disabled={loading || !isFullEditAllowed}
               />
-            </div>
-          </div>
+                </div>
+              </div>
 
-          {/* Developer */}
-          <div>
+              {/* Developer */}
+              <div>
             <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
               <User className="w-4 h-4 inline mr-1" />
               Developer
@@ -636,9 +754,11 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
                 <option key={dev.id} value={dev.name}>
                   {dev.name}
                 </option>
-              ))}
-            </select>
-          </div>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
 
           {/* Error Message */}
           {errors.submit && (

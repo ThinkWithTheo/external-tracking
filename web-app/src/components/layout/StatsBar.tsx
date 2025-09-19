@@ -326,11 +326,11 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                           if (parentCompare !== 0) return parentCompare;
                           return a.subtask.name.localeCompare(b.subtask.name);
                         })
-                        .map((item, index) => {
+                        .map((item) => {
                         const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
                         
                         return (
-                          <div key={`${developer}-${item.subtask.id}-${index}`} className="flex items-center justify-between py-1 gap-2">
+                          <div key={`in-progress-${item.subtask.id}`} className="flex items-center justify-between py-1 gap-2">
                             <div className="flex items-center space-x-2 flex-1 min-w-0">
                               <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">•</span>
                               <span
@@ -481,11 +481,11 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                           if (parentCompare !== 0) return parentCompare;
                           return a.subtask.name.localeCompare(b.subtask.name);
                         })
-                        .map((item, index) => {
+                        .map((item) => {
                         const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
                         
                         return (
-                          <div key={`${developer}-${item.subtask.id}-${index}`} className="flex items-center justify-between py-1 gap-2">
+                          <div key={`review-${item.subtask.id}`} className="flex items-center justify-between py-1 gap-2">
                             <div className="flex items-center space-x-2 flex-1 min-w-0">
                               <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">•</span>
                               <span
@@ -656,11 +656,11 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                           if (parentCompare !== 0) return parentCompare;
                           return a.subtask.name.localeCompare(b.subtask.name);
                         })
-                        .map((item, index) => {
+                        .map((item) => {
                         const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
                         
                         return (
-                          <div key={`${developer}-${item.subtask.id}-${index}`} className="flex items-center justify-between py-1 gap-2">
+                          <div key={`urgent-${item.subtask.id}`} className="flex items-center justify-between py-1 gap-2">
                             <div className="flex items-center space-x-2 flex-1 min-w-0">
                               <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">•</span>
                               <span

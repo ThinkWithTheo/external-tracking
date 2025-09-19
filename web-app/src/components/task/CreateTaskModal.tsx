@@ -50,7 +50,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   // Check if user has admin privileges for task creation
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isOpen) {
       const adminStatus = localStorage.getItem('trackingAdmin') === 'true';
       const storedUsername = localStorage.getItem('trackingUser') || '';
       setIsAdmin(adminStatus);
@@ -119,12 +119,16 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     }
   }, [isAdmin]);
 
-  // Load data when modal opens
+  // Load data when modal opens and after admin status is determined
   useEffect(() => {
-    if (isOpen) {
-      loadFormData();
+    if (isOpen && isCreationAllowed) {
+      // Small delay to ensure admin status is set
+      const timer = setTimeout(() => {
+        loadFormData();
+      }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen, loadFormData]);
+  }, [isOpen, isCreationAllowed, isAdmin, loadFormData]);
 
   const handleInputChange = (field: keyof TaskFormData, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
