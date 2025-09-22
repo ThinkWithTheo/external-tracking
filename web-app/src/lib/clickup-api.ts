@@ -15,6 +15,7 @@ import {
   ApiError
 } from '@/types/clickup';
 import { parseInProgressTimestamps } from '@/lib/utils';
+import { getAllLogs } from '@/lib/blob-logger';
 
 class ClickUpAPI {
   private client: AxiosInstance;
@@ -251,20 +252,17 @@ class ClickUpAPI {
     // Fetch custom field definitions once for all tasks
     const customFields = await this.getCustomFields();
     
-    // Fetch and parse logs for "In Progress" timestamps
+    // Fetch and parse logs for "In Progress" timestamps by calling the function directly
     let inProgressTimestamps = new Map<string, string>();
     try {
-      // This needs to be an absolute URL for server-side fetching
-      const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-      const logResponse = await fetch(`${baseUrl}/api/logs/markdown`);
-      if (logResponse.ok) {
-        const logContent = await logResponse.text();
+      const logContent = await getAllLogs();
+      if (logContent) {
         inProgressTimestamps = parseInProgressTimestamps(logContent);
       } else {
-        console.warn('Could not fetch task logs, "In Progress" durations will not be available.');
+        console.warn('Log content is empty, "In Progress" durations will not be available.');
       }
     } catch (error) {
-      console.error('Error fetching or parsing task logs:', error);
+      console.error('Error reading or parsing task logs:', error);
     }
 
     // Filter out closed and completed tasks
