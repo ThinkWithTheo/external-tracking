@@ -263,58 +263,6 @@ export async function GET(request: NextRequest) {
       return updatedDate >= reviewStartTime;
     });
 
-    // --- Slack Message Generation ---
-    // Dynamically create a map for Slack user handles from the developer list
-    const slackUserMap: Record<string, string> = {};
-    Object.values(developerMap).forEach(name => {
-      // Creates a mapping from 'Dev Name' to 'dev.name' for Slack @mentions.
-      if (name && !slackUserMap[name]) {
-        slackUserMap[name] = name.toLowerCase().replace(/\s+/g, '.');
-      }
-    });
-
-    const developerTalkingPoints: Record<string, string[]> = {};
-
-    // Collect talking points for each developer (urgent, stale, or in-progress)
-    inProgressTasks.forEach(task => {
-      const devField = task.custom_fields?.find(f => f.name?.toLowerCase().includes('developer'));
-      const devName = devField ? getDeveloperName(devField) : 'Unassigned';
-      
-      if (devName !== 'Unassigned') {
-        const isUrgent = task.priority?.priority?.toLowerCase() === 'urgent';
-        const isStale = staleInProgressTasks.some(staleTask => staleTask.id === task.id);
-
-        // We only want to prompt them about urgent or stale tasks
-        if (isUrgent || isStale) {
-          if (!developerTalkingPoints[devName]) {
-            developerTalkingPoints[devName] = [];
-          }
-          let point = `- ${task.name}`;
-          if (isUrgent && isStale) {
-            point += ' (🔥 Urgent & ⏰ Stale)';
-          } else if (isUrgent) {
-            point += ' (🔥 Urgent)';
-          } else if (isStale) {
-            point += ' (⏰ Stale)';
-          }
-          developerTalkingPoints[devName].push(point);
-        }
-      }
-    });
-
-    let slackMessage = `*Good morning!* ☀️ Here is your daily review summary.\n\nPlease be prepared to discuss your urgent/stale tasks:`;
-
-    Object.entries(developerTalkingPoints).forEach(([dev, points]) => {
-      const slackHandle = slackUserMap[dev] ? `<@${slackUserMap[dev]}>` : `*${dev}*`;
-      slackMessage += `\n\n${slackHandle}:\n${points.join('\n')}`;
-    });
-
-    const slackBlock = `## 📋 SLACK MESSAGE TO COPY
-\`\`\`
-${slackMessage}
-\`\`\`
----
-`;
     // --- End Slack Message Generation ---
 
     // Fetch the dynamic prompt from Redis, with a fallback to the hardcoded version
@@ -323,7 +271,7 @@ ${slackMessage}
     const llmPrompt = customPrompt || DEFAULT_LLM_PROMPT;
 
     // Generate the markdown report
-    const report = `${slackBlock}# Daily Review Analysis Report
+    const report = `# Daily Review Analysis Report
 Generated: ${nowUTC}
 Current Time (CST/CDT): ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
 Review Period Start: ${reviewStartTime.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
