@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProcessedTask } from '@/types/clickup';
 import TaskRow from './TaskRow';
 import { TaskGrid } from './task/TaskCard';

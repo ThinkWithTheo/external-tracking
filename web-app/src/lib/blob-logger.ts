@@ -31,6 +31,20 @@ const getLogKey = () => {
 };
 
 const LOG_KEY = getLogKey();
+const getPromptKey = () => {
+  const env = process.env.VERCEL_ENV || 'development';
+  
+  switch (env) {
+    case 'production':
+      return 'llm:prompt';
+    case 'preview':
+      return 'llm:prompt-preview';
+    default:
+      return 'llm:prompt-dev';
+  }
+};
+
+const PROMPT_KEY = getPromptKey();
 
 function shouldUseRedisStorage(): boolean {
   return !!process.env.REDIS_URL;
@@ -172,4 +186,31 @@ export async function getLogMetadata(): Promise<{
   } catch {
     return null;
   }
+}
+
+export async function getLLMPrompt(): Promise<string | null> {
+  if (shouldUseRedisStorage()) {
+    try {
+      const client = await getRedisClient();
+      return await client.get(PROMPT_KEY);
+    } catch (error) {
+      console.error('Error reading LLM prompt from Redis:', error);
+      return null;
+    }
+  }
+  // No local file fallback for prompts, it will use the hardcoded version.
+  return null;
+}
+
+export async function setLLMPrompt(prompt: string): Promise<void> {
+  if (shouldUseRedisStorage()) {
+    try {
+      const client = await getRedisClient();
+      await client.set(PROMPT_KEY, prompt);
+    } catch (error) {
+      console.error('Error setting LLM prompt in Redis:', error);
+      throw error; // Re-throw to let the caller handle it
+    }
+  }
+  // No local file storage for prompts.
 }

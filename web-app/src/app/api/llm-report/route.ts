@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clickupAPI } from '@/lib/clickup-api';
-import { getAllLogs } from '@/lib/blob-logger';
+import { getAllLogs, getLLMPrompt } from '@/lib/blob-logger';
 import { parseInProgressTimestamps } from '@/lib/utils';
+import { DEFAULT_LLM_PROMPT } from '@/lib/prompts';
 
 export async function GET(request: NextRequest) {
   try {
@@ -316,59 +317,18 @@ ${slackMessage}
 `;
     // --- End Slack Message Generation ---
 
+    // Fetch the dynamic prompt from Redis, with a fallback to the hardcoded version
+    const customPrompt = await getLLMPrompt();
+    
+    const llmPrompt = customPrompt || DEFAULT_LLM_PROMPT;
+
     // Generate the markdown report
     const report = `${slackBlock}# Daily Review Analysis Report
 Generated: ${nowUTC}
 Current Time (CST/CDT): ${now.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
 Review Period Start: ${reviewStartTime.toLocaleString('en-US', { timeZone: 'America/Chicago', dateStyle: 'full', timeStyle: 'long' })}
 
-## PROMPT FOR DAILY REVIEW ANALYSIS
-
-You are analyzing a software development team's task management data for their daily review meeting.
-
-**IMPORTANT CONTEXT:**
-- The report was generated at: ${nowUTC}
-- The review period is from **11:00 AM CST/CDT on the previous business day** to now.
-- The logs below show changes since: ${reviewStartTimeUTC}
-- All timestamps are in UTC format (ISO 8601).
-- Assume developers have a capacity of 6 productive hours per day.
-
-**IMPORTANT: Review the COMPLETE TASK TABLE and the DAILY REVIEW section below. These are your primary data sources.**
-
-Based on the data, please provide:
-
-### 1. DAILY REVIEW ANALYSIS
-Review the 'CHANGES SINCE LAST REVIEW' log and the list of 'CURRENTLY IN-PROGRESS TASKS'.
-- What key activities occurred since the last review period started (${reviewStartTime.toLocaleString('en-US', { timeZone: 'America/Chicago' })})?
-- Are there any completed tasks or regressions mentioned in the logs?
-- Do the in-progress tasks align with the team's current priorities?
-
-### 2. RISKS AND BLOCKERS
-From the table data:
-- Tasks without hour estimates that are high/urgent priority.
-- Overdue tasks that might impact other work.
-- Developers with >40 hours of assigned work.
-
-### 3. STANDUP TALKING POINTS (QUICK READ)
-Based on the complete task table, provide 5-7 concise, actionable talking points focusing on:
-
-**URGENT ITEMS HANGING:**
-- Which URGENT tasks have been in progress for 2+ days? (Check Task ID, Developer, Days in Progress)
-- Which URGENT tasks are still unassigned and need immediate assignment?
-- Any urgent tasks without time estimates that need sizing?
-
-**TODAY'S PRIORITIES:**
-- For each developer with urgent work: "[Developer] has urgent task [Task ID: Name] - [X days] in progress"
-- Overdue tasks marked with 🚨 that need escalation
-- Quick wins: Urgent tasks under 4 hours that could be completed today
-
-**WORKLOAD CHECK:**
-- Developers with 10+ hours of urgent work in progress
-- Anyone blocked or overloaded based on hours (6 productive hours/day capacity)
-
-Keep each point brief and reference specific Task IDs for easy lookup. Focus on urgent tasks that have been stagnant.
-
-**Use the actual data from the task table and logs. Reference specific task names, developer names, and hour estimates. Do not make assumptions and do NOT suggest reassigning work between developers.**
+${llmPrompt}
 
 ## COMPLETE TASK TABLE (ALL ${tasks.length} TASKS)
 

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, FileText, User, Shield, Download, Edit, Plus } from 'lucide-react';
+import { LogOut, FileText, User, Shield, Download, Edit, Plus, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { Dropdown, DropdownItem } from '@/components/ui/Dropdown';
 
 interface HeaderProps {
   className?: string;
@@ -46,6 +47,11 @@ const Header: React.FC<HeaderProps> = ({
     // Download the LLM report
     window.open('/api/llm-report?download=true', '_blank');
   };
+
+  const handleEditLLMPrompt = () => {
+    window.location.href = '/prompt';
+  };
+
   return (
     <header className={cn(
       "sticky top-0 z-50 w-full border-b border-[var(--color-border)] bg-gradient-to-r from-[var(--color-surface)] to-[var(--color-surface-hover)] backdrop-blur-sm",
@@ -113,37 +119,43 @@ const Header: React.FC<HeaderProps> = ({
             {/* Admin buttons */}
             {isAdmin && (
               <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleViewLog}
-                  aria-label="View change log"
+                <Dropdown
+                  trigger={
+                    <Button variant="secondary" size="sm">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Logs
+                      <ChevronDown className="h-4 w-4 ml-1" />
+                    </Button>
+                  }
                 >
-                  <FileText className="h-4 w-4 mr-2" />
-                  View Log
-                </Button>
+                  <DropdownItem onClick={handleViewLog}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    View Log
+                  </DropdownItem>
+                  <DropdownItem onClick={handleEditLogs}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Logs
+                  </DropdownItem>
+                </Dropdown>
 
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleEditLogs}
-                  aria-label="Edit logs"
-                  title="Edit task change logs"
+                <Dropdown
+                  trigger={
+                    <Button variant="primary" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      LLM
+                      <ChevronDown className="h-4 w-4 ml-1" />
+                    </Button>
+                  }
                 >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Logs
-                </Button>
-
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleDownloadLLMReport}
-                  aria-label="Download LLM Report"
-                  title="Download task report for LLM analysis"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  LLM Report
-                </Button>
+                  <DropdownItem onClick={handleDownloadLLMReport}>
+                    <Download className="h-4 w-4 mr-2" />
+                    LLM Report
+                  </DropdownItem>
+                  <DropdownItem onClick={handleEditLLMPrompt}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit LLM Prompt
+                  </DropdownItem>
+                </Dropdown>
               </>
             )}
 

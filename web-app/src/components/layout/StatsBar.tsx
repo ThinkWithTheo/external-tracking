@@ -529,348 +529,376 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
       })()}
 
       {/* Review Tasks by Developer */}
-      <Card className="p-4">
-        <div className="space-y-4">
-          <div
-            className="flex items-center justify-between cursor-pointer select-none"
-            onClick={() => setIsReviewCollapsed(!isReviewCollapsed)}
-          >
-            <div className="flex items-center space-x-2">
-              {isReviewCollapsed ? (
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-secondary)]" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
-              )}
-              <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
-                Review Tasks by Developer
-              </h3>
-            </div>
-            <Badge variant="review" className="text-xs">
-              In Review
-            </Badge>
-          </div>
-          
-          {!isReviewCollapsed && (() => {
-            // Collect all subtasks in review
-            const reviewSubtasks: Array<{
-              subtask: ProcessedTask;
-              parentName: string;
-              developer: string;
-              developerColor: string;
-            }> = [];
-            
-            // Filter subtasks with "in review" status
-            tasks.forEach(task => {
-              if (task.subtasks && task.subtasks.length > 0) {
-                task.subtasks.forEach(subtask => {
-                  const isInReview = subtask.status.toLowerCase().includes('review');
-                  
-                  if (isInReview) {
-                    reviewSubtasks.push({
-                      subtask,
-                      parentName: task.name,
-                      developer: subtask.developer || task.developer || 'Unassigned',
-                      developerColor: subtask.developerColor || task.developerColor || '#6B7280'
+      {(() => {
+        // Collect all subtasks in review to check if the section should be rendered
+        const reviewSubtasks: ProcessedTask[] = [];
+        tasks.forEach(task => {
+          if (task.subtasks && task.subtasks.length > 0) {
+            task.subtasks.forEach(subtask => {
+              if (subtask.status.toLowerCase().includes('review')) {
+                reviewSubtasks.push(subtask);
+              }
+            });
+          }
+        });
+
+        // Only render the card if there are tasks in review
+        if (reviewSubtasks.length === 0) {
+          return null;
+        }
+
+        return (
+          <Card className="p-4">
+            <div className="space-y-4">
+              <div
+                className="flex items-center justify-between cursor-pointer select-none"
+                onClick={() => setIsReviewCollapsed(!isReviewCollapsed)}
+              >
+                <div className="flex items-center space-x-2">
+                  {isReviewCollapsed ? (
+                    <ChevronRight className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                  )}
+                  <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
+                    Review Tasks by Developer
+                  </h3>
+                </div>
+                <Badge variant="review" className="text-xs">
+                  {reviewSubtasks.length} In Review
+                </Badge>
+              </div>
+              
+              {!isReviewCollapsed && (() => {
+                // Re-process to get full details for display
+                const detailedReviewSubtasks: Array<{
+                  subtask: ProcessedTask;
+                  parentName: string;
+                  developer: string;
+                  developerColor: string;
+                }> = [];
+                
+                tasks.forEach(task => {
+                  if (task.subtasks && task.subtasks.length > 0) {
+                    task.subtasks.forEach(subtask => {
+                      if (subtask.status.toLowerCase().includes('review')) {
+                        detailedReviewSubtasks.push({
+                          subtask,
+                          parentName: task.name,
+                          developer: subtask.developer || task.developer || 'Unassigned',
+                          developerColor: subtask.developerColor || task.developerColor || '#6B7280'
+                        });
+                      }
                     });
                   }
                 });
-              }
-            });
-            
-            // Group subtasks by developer
-            const subtasksByDeveloper = reviewSubtasks.reduce((acc, item) => {
-              const developer = item.developer;
-              if (!acc[developer]) {
-                acc[developer] = {
-                  subtasks: [],
-                  totalHours: 0,
-                  color: item.developerColor
-                };
-              }
-              acc[developer].subtasks.push(item);
-              
-              // Add subtask hours
-              const subtaskHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
-              acc[developer].totalHours += subtaskHours;
-              
-              return acc;
-            }, {} as Record<string, { subtasks: typeof reviewSubtasks, totalHours: number, color: string }>);
-            
-            const developers = Object.entries(subtasksByDeveloper).sort((a, b) =>
-              a[0].localeCompare(b[0]) // Sort alphabetically by developer name
-            );
-            
-            if (developers.length === 0) {
-              return (
-                <div className="text-center py-8 text-[var(--color-text-muted)]">
-                  No tasks currently in review.
-                </div>
-              );
-            }
-            
-            return (
-              <div className="space-y-3">
-                {developers.map(([developer, data]) => (
-                  <div key={developer} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: data.color }}
-                        />
-                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                          {developer}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {data.subtasks.length} {data.subtasks.length === 1 ? 'subtask' : 'subtasks'}
-                        </Badge>
-                      </div>
-                      <span className="text-sm font-semibold text-[var(--color-primary-600)]">
-                        {data.totalHours > 0 ? `${Math.round(data.totalHours)}h` : 'No estimate'}
-                      </span>
-                    </div>
-                    
-                    <div className="pl-4 space-y-1">
-                      {data.subtasks
-                        .sort((a, b) => {
-                          // Sort alphabetically by parent name, then by subtask name
-                          const parentCompare = a.parentName.localeCompare(b.parentName);
-                          if (parentCompare !== 0) return parentCompare;
-                          return a.subtask.name.localeCompare(b.subtask.name);
-                        })
-                        .map((item) => {
-                        const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
-                        
-                        return (
-                          <div key={`review-${item.subtask.id}`} className="flex items-center justify-between py-1 gap-2">
-                            <div className="flex items-center space-x-2 flex-1 min-w-0">
-                              <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">•</span>
-                              <span
-                                className={`text-xs text-[var(--color-text-secondary)] truncate block ${onTaskClick ? 'cursor-pointer hover:text-[var(--color-primary-600)] transition-colors' : ''}`}
-                                onClick={onTaskClick ? () => onTaskClick(item.subtask.id) : undefined}
-                                title={`${item.parentName} - ${item.subtask.name}`}
-                              >
-                                {item.parentName} - {item.subtask.name}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              {item.subtask.priority && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs"
-                                  style={{
-                                    borderColor: item.subtask.priority.color,
-                                    color: item.subtask.priority.color
-                                  }}
-                                >
-                                  {item.subtask.priority.name}
-                                </Badge>
-                              )}
-                              <span className="text-xs text-[var(--color-text-muted)]">
-                                {displayHours > 0
-                                  ? `${Math.round(displayHours)}h`
-                                  : '-'
-                                }
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
                 
-                {/* Summary */}
-                <div className="pt-3 mt-3 border-t border-[var(--color-border)]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                      Total Review Hours
-                    </span>
-                    <span className="text-lg font-bold text-[var(--color-primary-600)]">
-                      {Math.round(developers.reduce((sum, [, data]) => sum + data.totalHours, 0))}h
-                    </span>
+                const subtasksByDeveloper = detailedReviewSubtasks.reduce((acc, item) => {
+                  const developer = item.developer;
+                  if (!acc[developer]) {
+                    acc[developer] = {
+                      subtasks: [],
+                      totalHours: 0,
+                      color: item.developerColor
+                    };
+                  }
+                  acc[developer].subtasks.push(item);
+                  const subtaskHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+                  acc[developer].totalHours += subtaskHours;
+                  return acc;
+                }, {} as Record<string, { subtasks: typeof detailedReviewSubtasks, totalHours: number, color: string }>);
+                
+                const developers = Object.entries(subtasksByDeveloper).sort((a, b) =>
+                  a[0].localeCompare(b[0])
+                );
+                
+                if (developers.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-[var(--color-text-muted)]">
+                      No tasks currently in review.
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="space-y-3">
+                    {developers.map(([developer, data]) => (
+                      <div key={developer} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: data.color }}
+                            />
+                            <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                              {developer}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              {data.subtasks.length} {data.subtasks.length === 1 ? 'subtask' : 'subtasks'}
+                            </Badge>
+                          </div>
+                          <span className="text-sm font-semibold text-[var(--color-primary-600)]">
+                            {data.totalHours > 0 ? `${Math.round(data.totalHours)}h` : 'No estimate'}
+                          </span>
+                        </div>
+                        
+                        <div className="pl-4 space-y-1">
+                          {data.subtasks
+                            .sort((a, b) => {
+                              const parentCompare = a.parentName.localeCompare(b.parentName);
+                              if (parentCompare !== 0) return parentCompare;
+                              return a.subtask.name.localeCompare(b.subtask.name);
+                            })
+                            .map((item) => {
+                            const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+                            
+                            return (
+                              <div key={`review-${item.subtask.id}`} className="flex items-center justify-between py-1 gap-2">
+                                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                  <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">•</span>
+                                  <span
+                                    className={`text-xs text-[var(--color-text-secondary)] truncate block ${onTaskClick ? 'cursor-pointer hover:text-[var(--color-primary-600)] transition-colors' : ''}`}
+                                    onClick={onTaskClick ? () => onTaskClick(item.subtask.id) : undefined}
+                                    title={`${item.parentName} - ${item.subtask.name}`}
+                                  >
+                                    {item.parentName} - {item.subtask.name}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {item.subtask.priority && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                      style={{
+                                        borderColor: item.subtask.priority.color,
+                                        color: item.subtask.priority.color
+                                      }}
+                                    >
+                                      {item.subtask.priority.name}
+                                    </Badge>
+                                  )}
+                                  <span className="text-xs text-[var(--color-text-muted)]">
+                                    {displayHours > 0
+                                      ? `${Math.round(displayHours)}h`
+                                      : '-'
+                                    }
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Summary */}
+                    <div className="pt-3 mt-3 border-t border-[var(--color-border)]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                          Total Review Hours
+                        </span>
+                        <span className="text-lg font-bold text-[var(--color-primary-600)]">
+                          {Math.round(developers.reduce((sum, [, data]) => sum + data.totalHours, 0))}h
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      </Card>
+                );
+              })()}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Urgent Priority Tasks by Developer (excluding In Progress) */}
-      <Card className="p-4">
-        <div className="space-y-4">
-          <div
-            className="flex items-center justify-between cursor-pointer select-none"
-            onClick={() => setIsUrgentCollapsed(!isUrgentCollapsed)}
-          >
-            <div className="flex items-center space-x-2">
-              {isUrgentCollapsed ? (
-                <ChevronRight className="w-4 h-4 text-[var(--color-text-secondary)]" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
-              )}
-              <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
-                Urgent Priority Tasks by Developer
-              </h3>
-            </div>
-            <Badge variant="error" className="text-xs">
-              Urgent Priority
-            </Badge>
-          </div>
-          
-          {!isUrgentCollapsed && (() => {
-            // Collect all urgent subtasks (excluding in-progress) with their parent task names
-            const urgentSubtasks: Array<{
-              subtask: ProcessedTask;
-              parentName: string;
-              developer: string;
-              developerColor: string;
-            }> = [];
-            
-            // Filter subtasks with urgent priority (excluding in-progress subtasks)
-            tasks.forEach(task => {
-              if (task.subtasks && task.subtasks.length > 0) {
-                task.subtasks.forEach(subtask => {
-                  // Check if the SUBTASK has urgent priority
-                  const isUrgent = subtask.priority?.name.toLowerCase() === 'urgent';
-                  
-                  // Check if the subtask itself is in progress
-                  const isSubtaskInProgress = subtask.status.toLowerCase().includes('progress') ||
-                                             subtask.status.toLowerCase().includes('active') ||
-                                             subtask.status.toLowerCase().includes('working');
-                  
-                  if (isUrgent && !isSubtaskInProgress) {
-                    urgentSubtasks.push({
-                      subtask,
-                      parentName: task.name,
-                      developer: subtask.developer || task.developer || 'Unassigned',
-                      developerColor: subtask.developerColor || task.developerColor || '#6B7280'
+      {(() => {
+        // First, find all urgent subtasks to determine if the section should be rendered
+        const urgentSubtasks: ProcessedTask[] = [];
+        tasks.forEach(task => {
+          if (task.subtasks && task.subtasks.length > 0) {
+            task.subtasks.forEach(subtask => {
+              const isUrgent = subtask.priority?.name.toLowerCase() === 'urgent';
+              const isSubtaskInProgress = subtask.status.toLowerCase().includes('progress') ||
+                                         subtask.status.toLowerCase().includes('active') ||
+                                         subtask.status.toLowerCase().includes('working');
+              if (isUrgent && !isSubtaskInProgress) {
+                urgentSubtasks.push(subtask);
+              }
+            });
+          }
+        });
+
+        // If there are no urgent tasks, don't render the card
+        if (urgentSubtasks.length === 0) {
+          return null;
+        }
+
+        return (
+          <Card className="p-4">
+            <div className="space-y-4">
+              <div
+                className="flex items-center justify-between cursor-pointer select-none"
+                onClick={() => setIsUrgentCollapsed(!isUrgentCollapsed)}
+              >
+                <div className="flex items-center space-x-2">
+                  {isUrgentCollapsed ? (
+                    <ChevronRight className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                  )}
+                  <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
+                    Urgent Priority Tasks by Developer
+                  </h3>
+                </div>
+                <Badge variant="error" className="text-xs">
+                  {urgentSubtasks.length} Urgent
+                </Badge>
+              </div>
+              
+              {!isUrgentCollapsed && (() => {
+                // Re-process to get full details for display
+                const detailedUrgentSubtasks: Array<{
+                  subtask: ProcessedTask;
+                  parentName: string;
+                  developer: string;
+                  developerColor: string;
+                }> = [];
+                
+                tasks.forEach(task => {
+                  if (task.subtasks && task.subtasks.length > 0) {
+                    task.subtasks.forEach(subtask => {
+                      const isUrgent = subtask.priority?.name.toLowerCase() === 'urgent';
+                      const isSubtaskInProgress = subtask.status.toLowerCase().includes('progress') ||
+                                                 subtask.status.toLowerCase().includes('active') ||
+                                                 subtask.status.toLowerCase().includes('working');
+                      if (isUrgent && !isSubtaskInProgress) {
+                        detailedUrgentSubtasks.push({
+                          subtask,
+                          parentName: task.name,
+                          developer: subtask.developer || task.developer || 'Unassigned',
+                          developerColor: subtask.developerColor || task.developerColor || '#6B7280'
+                        });
+                      }
                     });
                   }
                 });
-              }
-            });
-            
-            // Group subtasks by developer
-            const subtasksByDeveloper = urgentSubtasks.reduce((acc, item) => {
-              const developer = item.developer;
-              if (!acc[developer]) {
-                acc[developer] = {
-                  subtasks: [],
-                  totalHours: 0,
-                  color: item.developerColor
-                };
-              }
-              acc[developer].subtasks.push(item);
-              
-              // Add subtask hours
-              const subtaskHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
-              acc[developer].totalHours += subtaskHours;
-              
-              return acc;
-            }, {} as Record<string, { subtasks: typeof urgentSubtasks, totalHours: number, color: string }>);
-            
-            const developers = Object.entries(subtasksByDeveloper).sort((a, b) =>
-              a[0].localeCompare(b[0]) // Sort alphabetically by developer name
-            );
-            
-            if (developers.length === 0) {
-              return (
-                <div className="text-center py-8 text-[var(--color-text-muted)]">
-                  No urgent priority subtasks found (excluding in-progress)
-                </div>
-              );
-            }
-            
-            return (
-              <div className="space-y-3">
-                {developers.map(([developer, data]) => (
-                  <div key={developer} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: data.color }}
-                        />
-                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                          {developer}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {data.subtasks.length} {data.subtasks.length === 1 ? 'subtask' : 'subtasks'}
-                        </Badge>
-                      </div>
-                      <span className="text-sm font-semibold text-[var(--color-error-600)]">
-                        {data.totalHours > 0 ? `${Math.round(data.totalHours)}h` : 'No estimate'}
-                      </span>
-                    </div>
-                    
-                    <div className="pl-4 space-y-1">
-                      {data.subtasks
-                        .sort((a, b) => {
-                          // Sort alphabetically by parent name, then by subtask name
-                          const parentCompare = a.parentName.localeCompare(b.parentName);
-                          if (parentCompare !== 0) return parentCompare;
-                          return a.subtask.name.localeCompare(b.subtask.name);
-                        })
-                        .map((item) => {
-                        const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
-                        
-                        return (
-                          <div key={`urgent-${item.subtask.id}`} className="flex items-center justify-between py-1 gap-2">
-                            <div className="flex items-center space-x-2 flex-1 min-w-0">
-                              <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">•</span>
-                              <span
-                                className={`text-xs text-[var(--color-text-secondary)] truncate block ${onTaskClick ? 'cursor-pointer hover:text-[var(--color-primary-600)] transition-colors' : ''}`}
-                                onClick={onTaskClick ? () => onTaskClick(item.subtask.id) : undefined}
-                                title={`${item.parentName} - ${item.subtask.name}`}
-                              >
-                                {item.parentName} - {item.subtask.name}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              {item.subtask.status && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs"
-                                  style={{
-                                    borderColor: item.subtask.statusColor,
-                                    color: item.subtask.statusColor
-                                  }}
-                                >
-                                  {item.subtask.status}
-                                </Badge>
-                              )}
-                              <span className="text-xs text-[var(--color-text-muted)]">
-                                {displayHours > 0
-                                  ? `${Math.round(displayHours)}h`
-                                  : '-'
-                                }
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
                 
-                {/* Summary */}
-                <div className="pt-3 mt-3 border-t border-[var(--color-border)]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                      Total Urgent Hours
-                    </span>
-                    <span className="text-lg font-bold text-[var(--color-error-600)]">
-                      {Math.round(developers.reduce((sum, [, data]) => sum + data.totalHours, 0))}h
-                    </span>
+                const subtasksByDeveloper = detailedUrgentSubtasks.reduce((acc, item) => {
+                  const developer = item.developer;
+                  if (!acc[developer]) {
+                    acc[developer] = {
+                      subtasks: [],
+                      totalHours: 0,
+                      color: item.developerColor
+                    };
+                  }
+                  acc[developer].subtasks.push(item);
+                  const subtaskHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+                  acc[developer].totalHours += subtaskHours;
+                  return acc;
+                }, {} as Record<string, { subtasks: typeof detailedUrgentSubtasks, totalHours: number, color: string }>);
+                
+                const developers = Object.entries(subtasksByDeveloper).sort((a, b) =>
+                  a[0].localeCompare(b[0])
+                );
+                
+                if (developers.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-[var(--color-text-muted)]">
+                      No urgent priority subtasks found (excluding in-progress)
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="space-y-3">
+                    {developers.map(([developer, data]) => (
+                      <div key={developer} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: data.color }}
+                            />
+                            <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                              {developer}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              {data.subtasks.length} {data.subtasks.length === 1 ? 'subtask' : 'subtasks'}
+                            </Badge>
+                          </div>
+                          <span className="text-sm font-semibold text-[var(--color-error-600)]">
+                            {data.totalHours > 0 ? `${Math.round(data.totalHours)}h` : 'No estimate'}
+                          </span>
+                        </div>
+                        
+                        <div className="pl-4 space-y-1">
+                          {data.subtasks
+                            .sort((a, b) => {
+                              const parentCompare = a.parentName.localeCompare(b.parentName);
+                              if (parentCompare !== 0) return parentCompare;
+                              return a.subtask.name.localeCompare(b.subtask.name);
+                            })
+                            .map((item) => {
+                            const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+                            
+                            return (
+                              <div key={`urgent-${item.subtask.id}`} className="flex items-center justify-between py-1 gap-2">
+                                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                  <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">•</span>
+                                  <span
+                                    className={`text-xs text-[var(--color-text-secondary)] truncate block ${onTaskClick ? 'cursor-pointer hover:text-[var(--color-primary-600)] transition-colors' : ''}`}
+                                    onClick={onTaskClick ? () => onTaskClick(item.subtask.id) : undefined}
+                                    title={`${item.parentName} - ${item.subtask.name}`}
+                                  >
+                                    {item.parentName} - {item.subtask.name}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {item.subtask.status && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                      style={{
+                                        borderColor: item.subtask.statusColor,
+                                        color: item.subtask.statusColor
+                                      }}
+                                    >
+                                      {item.subtask.status}
+                                    </Badge>
+                                  )}
+                                  <span className="text-xs text-[var(--color-text-muted)]">
+                                    {displayHours > 0
+                                      ? `${Math.round(displayHours)}h`
+                                      : '-'
+                                    }
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Summary */}
+                    <div className="pt-3 mt-3 border-t border-[var(--color-border)]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                          Total Urgent Hours
+                        </span>
+                        <span className="text-lg font-bold text-[var(--color-error-600)]">
+                          {Math.round(developers.reduce((sum, [, data]) => sum + data.totalHours, 0))}h
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      </Card>
+                );
+              })()}
+            </div>
+          </Card>
+        );
+      })()}
     </div>
   );
 };
