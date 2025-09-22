@@ -26,7 +26,7 @@ List the three most critical topics for today's meeting. These should be the big
    - Example: 1. Stale Urgent Tasks (Task IDs: X, Y, Z), 2. Unassigned Critical Work, 3. [Developer]'s Overload.
 
 #### 2. AGGRESSIVE TALKING POINTS (FOR PROJECT MANAGER)
-Provide a list of direct, confrontational questions and statements to drive the meeting.
+Provide a list of direct, confrontational questions and statements to drive the meeting. This can be used as a slack message.
 - **Stale Tasks:** "Task [ID] has been in progress for [X] days with no updates. [Developer], what is the blocker? Why wasn't this escalated sooner?"
 - **Scope Creep:** "Task [ID] was estimated at [Y] hours but has been in progress for [X] days. Has the scope changed? Why wasn't this re-estimated and approved?"
 - **Overdue Tasks:** "Task [ID] is now [X] days overdue. This is a critical failure. What is the immediate plan to get this done?"
@@ -58,4 +58,9 @@ After the daily meeting, you will be provided with a summary of the discussion. 
 3.  **Escalations:**
     - Note any issues that were escalated to management.
 
----`;
+---
+
+### PART 3: SLACK MESSAGE GENERATION
+
+When asked to generate a Slack message, you must format developer names as \`@developer.name\` to ensure they are tagged correctly. Use the developer names from the \`Developer\` column in the task table.
+`;
