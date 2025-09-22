@@ -228,6 +228,13 @@ const TaskList: React.FC<TaskListProps> = ({
                 <span>Name</span>
               </div>
               
+              <div className="w-24 text-center px-2">
+                <div className="flex items-center justify-center">
+                  <Clock className="w-3 h-3 mr-1" />
+                  <span>Duration</span>
+                </div>
+              </div>
+              
               <div className="w-20 text-center px-2">
                 <div className="flex items-center justify-center">
                   <Clock className="w-3 h-3 mr-1" />

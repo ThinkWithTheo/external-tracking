@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clickupAPI } from '@/lib/clickup-api';
 import { TaskUpdateData } from '@/types/clickup';
 import { logTaskChange } from '@/lib/blob-logger';
+import { parseInProgressTimestamps } from '@/lib/utils';
+import { getAllLogs } from '@/lib/blob-logger';
 
 export async function PUT(
   request: NextRequest,
@@ -92,6 +94,19 @@ export async function PUT(
     // Log the change after a successful API call
     try {
       const logData = { ...body };
+      
+      // Handle manual override of inProgressSince
+      if (body.inProgressSince) {
+        await logTaskChange(
+          taskId,
+          { inProgressSince: body.inProgressSince },
+          'MANUAL UPDATE',
+          'Manually corrected by admin'
+        );
+        // Remove from main log data to avoid duplication
+        delete logData.inProgressSince;
+      }
+
       if (logData.time_estimate) {
         logData.time_estimate = `${logData.time_estimate / 3600000} hours`;
       }
@@ -102,7 +117,10 @@ export async function PUT(
         delete logData.comment; // Clean up the temporary comment field
       }
 
-      await logTaskChange(taskId, logData, 'UPDATE');
+      // Only log if there are other changes besides the manual override
+      if (Object.keys(logData).length > 0) {
+        await logTaskChange(taskId, logData, 'UPDATE');
+      }
     } catch (logError) {
       console.error('CRITICAL: Task was updated but logging failed:', logError);
       // Return success but with a warning that logging failed
@@ -197,8 +215,24 @@ export async function GET(
       );
     }
     
+    // Fetch and parse logs to get inProgressSince timestamp
+    let inProgressSince: string | undefined;
+    try {
+      const logContent = await getAllLogs();
+      const inProgressTimestamps = parseInProgressTimestamps(logContent);
+      inProgressSince = inProgressTimestamps.get(taskId);
+    } catch (error) {
+      console.error('Error fetching in progress timestamp:', error);
+    }
+    
+    // Add the inProgressSince field to the task
+    const taskWithInProgressSince = {
+      ...targetTask,
+      inProgressSince
+    };
+    
     return NextResponse.json({
-      task: targetTask,
+      task: taskWithInProgressSince,
       message: 'Task fetched successfully'
     });
     

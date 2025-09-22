@@ -8,7 +8,7 @@ import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Progress } from '@/components/ui/Progress';
-import { cn, formatTimeEstimate, formatDueDate } from '@/lib/utils';
+import { cn, formatTimeEstimate, formatDueDate, getInProgressDurationInfo } from '@/lib/utils';
 import { ProcessedTask } from '@/types/clickup';
 
 interface TaskCardProps {
@@ -41,6 +41,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
 
   const isOverdue = task.dueDate && new Date(parseInt(task.dueDate)) < new Date() &&
     !task.status.toLowerCase().includes('done');
+
+  const durationInfo = getInProgressDurationInfo(task.inProgressSince);
 
   return (
     <motion.div
@@ -144,6 +146,14 @@ const TaskCard: React.FC<TaskCardProps> = ({
             priority={task.priority?.name || 'None'}
             color={task.priority?.color}
           />
+
+          {/* In Progress Duration */}
+          {durationInfo && (
+            <div className={`flex items-center space-x-1 font-medium ${durationInfo.color}`}>
+              <Clock className="h-3 w-3" />
+              <span className="text-xs">{durationInfo.duration}</span>
+            </div>
+          )}
 
           {/* Time Estimate */}
           {task.timeEstimate && (

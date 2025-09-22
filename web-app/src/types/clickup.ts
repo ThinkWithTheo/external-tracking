@@ -153,6 +153,7 @@ export interface ProcessedTask {
   subtasks: ProcessedTask[];
   isSubtask: boolean;
   parentId?: string;
+  inProgressSince?: string;
 }
 
 // Additional API types

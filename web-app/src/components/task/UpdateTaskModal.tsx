@@ -5,13 +5,13 @@ import { Calendar, Clock, User, Flag, Save, Loader2, Lock, ChevronDown, ChevronU
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-import { ClickUpTask, TaskUpdateData } from '@/types/clickup';
+import { ClickUpTask, TaskUpdateData, ProcessedTask } from '@/types/clickup';
 
 interface UpdateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTaskUpdated: () => void;
-  task: ClickUpTask | null;
+  task: (ClickUpTask & Partial<Pick<ProcessedTask, 'inProgressSince'>>) | null;
 }
 
 interface TaskFormData {
@@ -23,6 +23,7 @@ interface TaskFormData {
   timeEstimate: string;
   developer: string;
   parent: string;
+  inProgressSince: string;
 }
 
 const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
@@ -39,7 +40,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
     dueDate: '',
     timeEstimate: '',
     developer: '',
-    parent: ''
+    parent: '',
+    inProgressSince: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -213,6 +215,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         }
       }
 
+      const inProgressDateString = task.inProgressSince ? new Date(task.inProgressSince).toISOString().split('T')[0] : '';
+
       // Set form data with task values
       const taskFormData: TaskFormData = {
         name: task.name || '',
@@ -222,7 +226,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         dueDate: dueDateString,
         timeEstimate: timeEstimateHours,
         developer: developerValue,
-        parent: task.parent || ''
+        parent: task.parent || '',
+        inProgressSince: inProgressDateString
       };
 
       setFormData(taskFormData);
@@ -304,6 +309,11 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
       changes.parent = formData.parent || undefined;
     }
     
+    if (formData.inProgressSince !== originalData.inProgressSince) {
+      // This will be handled specially, not as a direct ClickUp field
+      // We can add a custom property if needed, e.g., changes.inProgressSince = ...
+    }
+    
     return changes;
   };
 
@@ -316,8 +326,11 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
 
     const changes = getChangedFields();
     
-    // If no changes were made, just close the modal
-    if (Object.keys(changes).length === 0) {
+    // Check if inProgressSince changed
+    const inProgressSinceChanged = formData.inProgressSince !== originalData?.inProgressSince;
+    
+    // If no changes were made (including inProgressSince), just close the modal
+    if (Object.keys(changes).length === 0 && !inProgressSinceChanged) {
       onClose();
       return;
     }
@@ -331,7 +344,11 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(changes),
+        body: JSON.stringify({
+          ...changes,
+          // Send the new inProgressSince date to be handled by the API
+          inProgressSince: inProgressSinceChanged ? formData.inProgressSince : undefined,
+        }),
       });
 
       const result = await response.json();
@@ -415,7 +432,8 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
         dueDate: '',
         timeEstimate: '',
         developer: '',
-        parent: ''
+        parent: '',
+        inProgressSince: ''
       });
       setOriginalData(null);
       setErrors({});
@@ -701,61 +719,83 @@ const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({
                 </div>
               </div>
 
-              {/* Row 2: Due Date and Time Estimate */}
+              {/* Row 2: Due Date and In Progress Since (if applicable) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Due Date */}
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Due Date
-              </label>
-              <input
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) => handleInputChange('dueDate', e.target.value)}
-                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
-                disabled={loading || !isFullEditAllowed}
-              />
-            </div>
-
-            {/* Time Estimate */}
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-                <Clock className="w-4 h-4 inline mr-1" />
-                Time Estimate (hours)
-              </label>
-              <input
-                type="number"
-                value={formData.timeEstimate}
-                onChange={(e) => handleInputChange('timeEstimate', e.target.value)}
-                min="0"
-                step="0.5"
-                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
-                placeholder="e.g., 2.5"
-                disabled={loading || !isFullEditAllowed}
-              />
+                {/* Due Date */}
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                    <Calendar className="w-4 h-4 inline mr-1" />
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dueDate}
+                    onChange={(e) => handleInputChange('dueDate', e.target.value)}
+                    className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
+                    disabled={loading || !isFullEditAllowed}
+                  />
                 </div>
+
+                {/* In Progress Since Date - Conditional */}
+                {isFullEditAllowed && formData.status === 'IN PROGRESS' ? (
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                      <Clock className="w-4 h-4 inline mr-1" />
+                      In Progress Since
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.inProgressSince}
+                      onChange={(e) => handleInputChange('inProgressSince', e.target.value)}
+                      className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
+                      disabled={loading}
+                    />
+                  </div>
+                ) : (
+                  <div></div> // Empty div to maintain grid layout
+                )}
               </div>
 
-              {/* Developer */}
-              <div>
-            <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-              <User className="w-4 h-4 inline mr-1" />
-              Developer
-            </label>
-            <select
-              value={formData.developer}
-              onChange={(e) => handleInputChange('developer', e.target.value)}
-              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
-              disabled={loading || !isFullEditAllowed}
-            >
-              <option value="">Select developer...</option>
-              {developerOptions.map((dev) => (
-                <option key={dev.id} value={dev.name}>
-                  {dev.name}
-                </option>
-                  ))}
-                </select>
+              {/* Row 3: Time Estimate and Developer */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Time Estimate */}
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    Time Estimate (hours)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.timeEstimate}
+                    onChange={(e) => handleInputChange('timeEstimate', e.target.value)}
+                    min="0"
+                    step="0.5"
+                    className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
+                    placeholder="e.g., 2.5"
+                    disabled={loading || !isFullEditAllowed}
+                  />
+                </div>
+
+                {/* Developer */}
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
+                    <User className="w-4 h-4 inline mr-1" />
+                    Developer
+                  </label>
+                  <select
+                    value={formData.developer}
+                    onChange={(e) => handleInputChange('developer', e.target.value)}
+                    className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md bg-[var(--color-surface)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] transition-colors"
+                    disabled={loading || !isFullEditAllowed}
+                  >
+                    <option value="">Select developer...</option>
+                    {developerOptions.map((dev) => (
+                      <option key={dev.id} value={dev.name}>
+                        {dev.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </>
           )}

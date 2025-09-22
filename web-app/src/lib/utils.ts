@@ -78,3 +78,101 @@ export function staggerChildren(index: number, delay: number = 50): { animationD
     animationDelay: `${index * delay}ms`
   };
 }
+
+// Log parsing utility
+export function parseInProgressTimestamps(logContent: string): Map<string, string> {
+  const inProgressTimestamps = new Map<string, string>();
+  const processedTaskIds = new Set<string>();
+
+  if (!logContent) {
+    return inProgressTimestamps;
+  }
+
+  // Use a global regex to find all log entry headers and their positions
+  const headerRegex = /## (CREATE|UPDATE|MANUAL UPDATE) Task ([a-zA-Z0-9]+) - ([\d\-T:Z\.]+)/g;
+  const matches = [...logContent.matchAll(headerRegex)];
+
+  // Iterate backwards through the found headers
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const match = matches[i];
+    const [fullHeader, action, taskId, timestamp] = match;
+    
+    // Skip if we've already found the latest entry for this task
+    if (processedTaskIds.has(taskId)) {
+      continue;
+    }
+
+    // Get the content of this specific log entry
+    const entryStartIndex = match.index! + fullHeader.length;
+    const nextEntryStartIndex = i + 1 < matches.length ? matches[i + 1].index! : logContent.length;
+    const entryContent = logContent.substring(entryStartIndex, nextEntryStartIndex);
+
+    if (action === 'MANUAL UPDATE') {
+      const manualTimestampMatch = entryContent.match(/- inProgressSince: "([\d\-T:Z\.]+)"/);
+      if (manualTimestampMatch) {
+        inProgressTimestamps.set(taskId, manualTimestampMatch[1]);
+        processedTaskIds.add(taskId);
+      }
+    } else { // Handles both CREATE and UPDATE
+      if (entryContent.includes('- status: "IN PROGRESS"')) {
+        inProgressTimestamps.set(taskId, timestamp);
+        processedTaskIds.add(taskId);
+      }
+    }
+  }
+  
+  return inProgressTimestamps;
+}
+
+export function formatInProgressDuration(inProgressSince?: string): string | null {
+  if (!inProgressSince) return null;
+
+  try {
+    const startDate = new Date(inProgressSince);
+    const now = new Date();
+    const diffMs = now.getTime() - startDate.getTime();
+    
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+      if (diffDays === 1) {
+        return "1 day";
+      }
+      return `${diffDays} days`;
+    }
+    if (diffHours > 0) {
+      if (diffHours === 1) {
+        return "1 hour";
+      }
+      return `${diffHours} hours`;
+    }
+    return "<1 hour";
+  } catch {
+    return null;
+  }
+}
+
+export function getInProgressDurationInfo(inProgressSince?: string): { duration: string | null; color: string; days: number } | null {
+  if (!inProgressSince) return null;
+
+  try {
+    const startDate = new Date(inProgressSince);
+    const now = new Date();
+    const diffMs = now.getTime() - startDate.getTime();
+    
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const duration = formatInProgressDuration(inProgressSince);
+    
+    let color = 'text-blue-600'; // Default blue
+    if (diffDays > 5) {
+      color = 'text-red-600'; // Red for >5 days
+    } else if (diffDays > 3) {
+      color = 'text-yellow-600'; // Yellow for >3 days
+    }
+    
+    return { duration, color, days: diffDays };
+  } catch {
+    return null;
+  }
+}

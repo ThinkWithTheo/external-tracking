@@ -50,7 +50,7 @@ export function getEnvironmentInfo(): {
 
 interface LogEntry {
   taskId: string;
-  action: 'CREATE' | 'UPDATE';
+  action: 'CREATE' | 'UPDATE' | 'MANUAL UPDATE';
   timestamp: string;
   changes: Record<string, unknown>;
   comment?: string;
@@ -89,7 +89,7 @@ async function logToLocalFile(entry: LogEntry): Promise<void> {
 export async function logTaskChange(
   taskId: string,
   changes: Record<string, unknown>,
-  action: 'CREATE' | 'UPDATE' = 'UPDATE',
+  action: 'CREATE' | 'UPDATE' | 'MANUAL UPDATE' = 'UPDATE',
   comment?: string
 ): Promise<void> {
   const entry: LogEntry = { taskId, action, timestamp: new Date().toISOString(), changes, comment };

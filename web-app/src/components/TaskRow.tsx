@@ -3,6 +3,7 @@ import { ProcessedTask } from '@/types/clickup';
 import { Clock, User, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { PriorityBadge } from '@/components/ui/Badge';
+import { getInProgressDurationInfo } from '@/lib/utils';
 
 interface TaskRowProps {
   task: ProcessedTask;
@@ -177,6 +178,20 @@ const TaskRow: React.FC<TaskRowProps> = ({
             >
               {task.name}
             </span>
+          </div>
+        </div>
+
+        {/* In Progress Duration */}
+        <div className="w-24 text-center px-2">
+          <div className="flex items-center justify-center text-sm text-gray-600">
+            {task.status.toLowerCase().includes('progress') && (() => {
+              const durationInfo = getInProgressDurationInfo(task.inProgressSince);
+              return durationInfo ? (
+                <span className={`text-xs font-medium ${durationInfo.color}`}>
+                  {durationInfo.duration}
+                </span>
+              ) : null;
+            })()}
           </div>
         </div>
 

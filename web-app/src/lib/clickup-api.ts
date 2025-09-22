@@ -14,6 +14,7 @@ import {
   TaskUpdateData,
   ApiError
 } from '@/types/clickup';
+import { parseInProgressTimestamps } from '@/lib/utils';
 
 class ClickUpAPI {
   private client: AxiosInstance;
@@ -250,6 +251,22 @@ class ClickUpAPI {
     // Fetch custom field definitions once for all tasks
     const customFields = await this.getCustomFields();
     
+    // Fetch and parse logs for "In Progress" timestamps
+    let inProgressTimestamps = new Map<string, string>();
+    try {
+      // This needs to be an absolute URL for server-side fetching
+      const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      const logResponse = await fetch(`${baseUrl}/api/logs/markdown`);
+      if (logResponse.ok) {
+        const logContent = await logResponse.text();
+        inProgressTimestamps = parseInProgressTimestamps(logContent);
+      } else {
+        console.warn('Could not fetch task logs, "In Progress" durations will not be available.');
+      }
+    } catch (error) {
+      console.error('Error fetching or parsing task logs:', error);
+    }
+
     // Filter out closed and completed tasks
     const initialCount = tasks.length;
     const openTasks = tasks.filter(task => {
@@ -291,13 +308,13 @@ class ClickUpAPI {
           continue; // Skip this task, don't add it to processedTasks
         }
 
-        const processedTask = await this.processTask(task, false, undefined, includeComments, customFields);
+        const processedTask = await this.processTask(task, false, undefined, includeComments, customFields, inProgressTimestamps);
         processedTask.subtasks = [];
 
         // Process subtasks sequentially as well
         for (const subtask of taskSubtasks) {
           try {
-            const processedSubtask = await this.processTask(subtask, true, task.id, includeComments, customFields);
+            const processedSubtask = await this.processTask(subtask, true, task.id, includeComments, customFields, inProgressTimestamps);
             processedTask.subtasks.push(processedSubtask);
           } catch (error) {
             console.warn(`Failed to process subtask ${subtask.id}:`, error);
@@ -324,7 +341,7 @@ class ClickUpAPI {
    * @param customFields - Custom field definitions for dropdown mapping
    * @returns Promise<ProcessedTask>
    */
-  private async processTask(task: ClickUpTask, isSubtask: boolean, parentId?: string, includeComments: boolean = false, customFields: ClickUpCustomField[] = []): Promise<ProcessedTask> {
+  private async processTask(task: ClickUpTask, isSubtask: boolean, parentId?: string, includeComments: boolean = false, customFields: ClickUpCustomField[] = [], inProgressTimestamps: Map<string, string> = new Map()): Promise<ProcessedTask> {
     // Get comments for this task only if requested
     let commentsResponse: ClickUpCommentsResponse = { comments: [] };
     if (includeComments) {
@@ -431,6 +448,8 @@ class ClickUpAPI {
 
     // Developer processing complete
 
+    const inProgressSince = inProgressTimestamps.get(task.id);
+
     return {
       id: task.id,
       name: task.name,
@@ -445,6 +464,7 @@ class ClickUpAPI {
       subtasks: [], // Will be populated by parent processing
       isSubtask,
       parentId,
+      inProgressSince,
     };
   }
 

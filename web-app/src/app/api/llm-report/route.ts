@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clickupAPI } from '@/lib/clickup-api';
 import { getAllLogs } from '@/lib/blob-logger';
+import { parseInProgressTimestamps } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -104,9 +105,11 @@ export async function GET(request: NextRequest) {
     // Get log file content from blob or local
     let logContent = '';
     let recentLogContent = '';
+    let inProgressTimestamps = new Map<string, string>();
     
     try {
       const fullLog = await getAllLogs();
+      inProgressTimestamps = parseInProgressTimestamps(fullLog);
       const lines = fullLog.split('\n');
       
       // Get logs since last standup
@@ -223,12 +226,20 @@ export async function GET(request: NextRequest) {
       return !devField?.value;
     }).length;
 
-    // Find tasks in progress for too long
+    // Find tasks in progress for too long using accurate log data
     const staleInProgressTasks = inProgressTasks.filter(task => {
-      if (!task.date_updated) return false;
-      const lastUpdate = new Date(parseInt(task.date_updated));
-      const daysSinceUpdate = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
-      return daysSinceUpdate > 3; // More than 3 days
+      const inProgressSince = inProgressTimestamps.get(task.id);
+      if (!inProgressSince) return false;
+      
+      const startDate = new Date(inProgressSince);
+      const daysInProgress = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      
+      // Define "stale" as in progress for more than 2 days for urgent/high priority, and 4 days for others
+      const isUrgentOrHigh = task.priority?.priority?.toLowerCase() === 'urgent' || task.priority?.priority?.toLowerCase() === 'high';
+      if (isUrgentOrHigh) {
+        return daysInProgress > 2;
+      }
+      return daysInProgress > 4;
     });
 
     // Get tasks with recent status changes, new tasks, and completed tasks
@@ -375,8 +386,9 @@ ${tasks
     const dueDate = task.due_date ? new Date(parseInt(task.due_date)).toLocaleDateString() : 'None';
     const isInProgress = task.status?.status?.toLowerCase().includes('progress') ||
                          task.status?.status?.toLowerCase().includes('active');
-    const daysInProgress = isInProgress && task.date_updated ?
-      Math.floor((now.getTime() - new Date(parseInt(task.date_updated)).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    const inProgressSince = inProgressTimestamps.get(task.id);
+    const daysInProgress = isInProgress && inProgressSince ?
+      Math.floor((now.getTime() - new Date(inProgressSince).getTime()) / (1000 * 60 * 60 * 24)) : 0;
     const isOverdue = task.due_date && new Date(parseInt(task.due_date)) < now;
     
     const description = task.description ? task.description.replace(/(\r\n|\n|\r)/gm, " ").substring(0, 100) + (task.description.length > 100 ? '...' : '') : 'No description';
@@ -513,8 +525,9 @@ ${Object.entries(developerInProgress)
     
     return `#### ${dev} (${devTasks.length} in progress)
 ${devTasks.map(task => {
-  const daysInProgress = task.date_updated ?
-    Math.floor((now.getTime() - new Date(parseInt(task.date_updated)).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  const inProgressSince = inProgressTimestamps.get(task.id);
+  const daysInProgress = inProgressSince ?
+    Math.floor((now.getTime() - new Date(inProgressSince).getTime()) / (1000 * 60 * 60 * 24)) : 0;
   
   const statusEmoji = daysInProgress > 3 ? '⚠️' : '✅';
   const overdue = task.due_date && new Date(parseInt(task.due_date)) < now;
@@ -606,11 +619,12 @@ ${sortedTasks.map(task => {
 ${staleInProgressTasks.length > 0 ? staleInProgressTasks.map(task => {
   const devField = task.custom_fields?.find(f => f.name?.toLowerCase().includes('developer'));
   const devName = devField ? getDeveloperName(devField) : 'Unassigned';
-  const daysInProgress = task.date_updated ?
-    Math.floor((now.getTime() - new Date(parseInt(task.date_updated)).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  const inProgressSince = inProgressTimestamps.get(task.id);
+  const daysInProgress = inProgressSince ?
+    Math.floor((now.getTime() - new Date(inProgressSince).getTime()) / (1000 * 60 * 60 * 24)) : 0;
   
   return `- **${task.name}** (${devName})
-  - ${daysInProgress} days in progress
+  - ${daysInProgress} days in progress (Started: ${inProgressSince ? new Date(inProgressSince).toLocaleDateString() : 'Unknown'})
   - Priority: ${task.priority?.priority || 'None'}
   - Last Updated: ${task.date_updated ? new Date(parseInt(task.date_updated)).toLocaleDateString() : 'Unknown'}`;
 }).join('\n') : 'No stale tasks - good job keeping tasks moving!'}

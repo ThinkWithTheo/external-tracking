@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, Clock, Users, TrendingUp, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { cn } from '@/lib/utils';
+import { cn, getInProgressDurationInfo } from '@/lib/utils';
 import { ProcessedTask } from '@/types/clickup';
 
 interface StatsBarProps {
@@ -317,7 +317,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                         </Badge>
                       </div>
                       <span className="text-sm font-semibold text-[var(--color-warning-600)]">
-                        {data.totalHours > 0 ? `${data.totalHours.toFixed(1)}h` : 'No estimate'}
+                        {data.totalHours > 0 ? `${Math.round(data.totalHours)}h` : 'No estimate'}
                       </span>
                     </div>
                     
@@ -331,6 +331,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                         })
                         .map((item) => {
                         const displayHours = (item.subtask.timeEstimate || 0) / (1000 * 60 * 60);
+                        const durationInfo = getInProgressDurationInfo(item.subtask.inProgressSince);
                         
                         return (
                           <div key={`in-progress-${item.subtask.id}`} className="flex items-center justify-between py-1 gap-2">
@@ -344,12 +345,19 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                                 {item.parentName} - {item.subtask.name}
                               </span>
                             </div>
-                            <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">
-                              {displayHours > 0
-                                ? `${displayHours.toFixed(1)}h`
-                                : '-'
-                              }
-                            </span>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {durationInfo && (
+                                <span className={`text-xs font-medium ${durationInfo.color}`}>
+                                  {durationInfo.duration}
+                                </span>
+                              )}
+                              <span className="text-xs text-[var(--color-text-muted)]">
+                                {displayHours > 0
+                                  ? `${Math.round(displayHours)}h`
+                                  : '-'
+                                }
+                              </span>
+                            </div>
                           </div>
                         );
                       })}
@@ -364,7 +372,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                       Total In Progress Hours
                     </span>
                     <span className="text-lg font-bold text-[var(--color-warning-600)]">
-                      {developers.reduce((sum, [, data]) => sum + data.totalHours, 0).toFixed(1)}h
+                      {Math.round(developers.reduce((sum, [, data]) => sum + data.totalHours, 0))}h
                     </span>
                   </div>
                 </div>
@@ -491,7 +499,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                               )}
                               <span className="text-xs text-[var(--color-text-muted)] min-w-[2.5rem] text-right">
                                 {displayHours > 0
-                                  ? `${displayHours.toFixed(1)}h`
+                                  ? `${Math.round(displayHours)}h`
                                   : '-'
                                 }
                               </span>
@@ -508,7 +516,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                           Total: {newSubtasks.length} {newSubtasks.length === 1 ? 'task' : 'tasks'}
                         </span>
                         <span className="text-sm font-semibold text-[var(--color-primary-600)]">
-                          {totalHours > 0 ? `${totalHours.toFixed(1)}h` : 'No estimates'}
+                          {totalHours > 0 ? `${Math.round(totalHours)}h` : 'No estimates'}
                         </span>
                       </div>
                     </div>
@@ -618,7 +626,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                         </Badge>
                       </div>
                       <span className="text-sm font-semibold text-[var(--color-primary-600)]">
-                        {data.totalHours > 0 ? `${data.totalHours.toFixed(1)}h` : 'No estimate'}
+                        {data.totalHours > 0 ? `${Math.round(data.totalHours)}h` : 'No estimate'}
                       </span>
                     </div>
                     
@@ -660,7 +668,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                               )}
                               <span className="text-xs text-[var(--color-text-muted)]">
                                 {displayHours > 0
-                                  ? `${displayHours.toFixed(1)}h`
+                                  ? `${Math.round(displayHours)}h`
                                   : '-'
                                 }
                               </span>
@@ -679,7 +687,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                       Total Review Hours
                     </span>
                     <span className="text-lg font-bold text-[var(--color-primary-600)]">
-                      {developers.reduce((sum, [, data]) => sum + data.totalHours, 0).toFixed(1)}h
+                      {Math.round(developers.reduce((sum, [, data]) => sum + data.totalHours, 0))}h
                     </span>
                   </div>
                 </div>
@@ -793,7 +801,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                         </Badge>
                       </div>
                       <span className="text-sm font-semibold text-[var(--color-error-600)]">
-                        {data.totalHours > 0 ? `${data.totalHours.toFixed(1)}h` : 'No estimate'}
+                        {data.totalHours > 0 ? `${Math.round(data.totalHours)}h` : 'No estimate'}
                       </span>
                     </div>
                     
@@ -835,7 +843,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                               )}
                               <span className="text-xs text-[var(--color-text-muted)]">
                                 {displayHours > 0
-                                  ? `${displayHours.toFixed(1)}h`
+                                  ? `${Math.round(displayHours)}h`
                                   : '-'
                                 }
                               </span>
@@ -854,7 +862,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ tasks, onTaskClick, className }) =>
                       Total Urgent Hours
                     </span>
                     <span className="text-lg font-bold text-[var(--color-error-600)]">
-                      {developers.reduce((sum, [, data]) => sum + data.totalHours, 0).toFixed(1)}h
+                      {Math.round(developers.reduce((sum, [, data]) => sum + data.totalHours, 0))}h
                     </span>
                   </div>
                 </div>
