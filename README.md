@@ -2,473 +2,113 @@
 
 ## Documentation Structure
 
-This repository follows a standardized documentation structure designed for both human developers and AI tools. All documentation is organized in the [`/docs`](docs/) folder with the following structure:
+This repository follows a standardized documentation structure designed for both human developers and AI tools. All documentation is organized in the [`/docs`](docs/) folder.
 
-### 📋 Standard Operating Procedures ([`/docs/SOPs`](docs/SOPs/))
-Contains standardized procedures and coding standards:
-- **[`Coding-Standards.md`](docs/SOPs/Coding-Standards.md)** - Development standards, version control, testing, and security practices
-- **[`SOP-Template.md`](docs/SOPs/SOP-Template.md)** - Template for creating new standard operating procedures
-
-### 🏗️ System Documentation ([`/docs/System`](docs/System/))
-Technical system documentation organized by Domain → Feature → Function:
-- **[`Overview.md`](docs/System/Overview.md)** - Central navigation hub and table of contents for all system docs
-- **[`System-Documentation-Template.md`](docs/System/System-Documentation-Template.md)** - Template for documenting system architecture and functionality
-
-### 📁 Project Documentation ([`/docs/Project`](docs/Project/))
-Project-specific documentation and working files:
-- **[`Working-Docs/`](docs/Project/Working-Docs/)** - Temporary working documents (Git ignored)
-- **[`Archive/`](docs/Project/Archive/)** - Archived project documentation for historical reference
+- **SOPs ([`/docs/SOPs`](docs/SOPs/))**: Contains standardized procedures and coding standards.
+- **System Docs ([`/docs/System`](docs/System/))**: Technical system documentation.
+- **Project Docs ([`/docs/Project`](docs/Project/))**: Project-specific documentation.
 
 ## Project Overview
 
-The External Tracking System is designed to monitor and track external resources, services, and dependencies. This system provides visibility into third-party integrations, API usage, and external service health.
-
-### Key Features
-- **External Service Monitoring**: Track availability and performance of external APIs and services
-- **Dependency Management**: Monitor and manage third-party library and service dependencies
-- **Usage Analytics**: Track and analyze usage patterns of external resources
-- **Alert Management**: Proactive notifications for external service issues
-- **Historical Data**: Maintain historical records of external service performance
-- **ClickUp Task Tracking**: Real-time web interface for viewing ClickUp tasks and subtasks with status, assignments, and progress tracking
+The External Tracking System is designed to monitor and track external resources, services, and dependencies. This system provides visibility into third-party integrations, API usage, and external service health. Its primary integration is a real-time web interface for viewing and managing ClickUp tasks.
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ or Python 3.11+ (depending on implementation)
+- Node.js 18+
 - Git
-- Access to external service APIs (credentials will be configured)
+- Access to ClickUp API credentials
 
 ### Setup Instructions
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/ThinkWithTheo/external-tracking.git
-   cd external-tracking
-   ```
-
-2. Install dependencies:
-   ```bash
-   # For Node.js projects
-   npm install
-   
-   # For Python projects
-   pip install -r requirements.txt
-   ```
-
-3. Set up environment variables:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. Review documentation structure:
-   ```bash
-   # Explore the docs folder
-   ls -la docs/
-   ```
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/ThinkWithTheo/external-tracking.git
+    cd external-tracking
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Set up environment variables:
+    ```bash
+    cp .env.example .env
+    # Edit .env with your configuration
+    ```
 
 ### For AI Development
-When working with AI tools on this project, always include:
-- **This README** for project context and navigation
-- **[`/docs/SOPs/Coding-Standards.md`](docs/SOPs/Coding-Standards.md)** for development standards
-- **Relevant system documentation** from [`/docs/System/`](docs/System/) based on the task
+When working with AI tools, always include:
+- **This README** for project context.
+- **[`/docs/SOPs/Coding-Standards.md`](docs/SOPs/Coding-Standards.md)** for development standards.
+- Relevant system documentation from [`/docs/System/`](docs/System/).
 
 ## Development Standards
 
-### Code Quality
-- Follow the coding standards defined in [`/docs/SOPs/Coding-Standards.md`](docs/SOPs/Coding-Standards.md)
-- Write self-documenting code with clear naming conventions
-- Include unit tests for new functionality
-- Document known issues and workarounds in code comments
+- **Code Quality**: Follow standards in [`/docs/SOPs/Coding-Standards.md`](docs/SOPs/Coding-Standards.md).
+- **Version Control**: Use feature branches (`feature/description`) and rebase on `main`.
+- **Documentation**: Keep this README under 500 lines for AI context efficiency.
 
-### Version Control
-- **Main Branch**: Always deployable, protected
-- **Feature Branches**: `feature/description-of-feature`
-- **Rebase Strategy**: Always rebase on main before pushing
-- **Commit Messages**: Clear, descriptive, action-oriented
+## ClickUp Integration ✅ COMPLETED & ENHANCED (September 2025)
 
-### Documentation
-- Keep README under 500 lines for AI context efficiency
-- Use Mermaid charts for visual documentation
-- Update system documentation when making architectural changes
-- Archive completed project documentation in [`/docs/Project/Archive/`](docs/Project/Archive/)
+The [`/web-app`](web-app/) directory contains a **fully operational** Next.js application that provides a modern, professional web interface for viewing and managing ClickUp tasks.
 
-## Available Tools and Integrations
+### 🎯 Key Features
+- **✅ Modern Card-Based Interface**: Beautiful and responsive task cards.
+- **✅ Comprehensive Stats Dashboard**: Real-time metrics for active tasks, in-progress work, and developer workload.
+- **✅ Advanced Filtering & Dual View Modes**: Filter by priority and assignee; toggle between card and table views.
+- **✅ Real-time Data**: Live synchronization with ClickUp API with full pagination support.
+- **✅ Task Update Modal**: Click any task to edit its details with pre-filled data.
+- **✅ Change Tracking System**: All task operations are logged to Vercel Redis for auditing and AI review.
+- **✅ Admin Log Editor**: Web-based editor at `/logs` for admins to view and edit task change logs.
+- **✅ Role-Based Task Creation**: Simplified interface for non-admin users.
 
-### Development Tools
-- **GitHub CLI**: For issue management and repository operations
-- **Mermaid**: For diagram generation and visualization
-- **API Testing**: Postman/Insomnia collections for external API testing
-- **Monitoring**: Integration with monitoring platforms (e.g., Datadog, New Relic)
+### 🎨 Latest Updates (September 2025)
 
-### External Service Integrations
-- **API Monitoring**: Health check endpoints for external services
-- **Webhook Management**: Incoming webhook processing and validation
-- **Rate Limiting**: Manage API rate limits across external services
-- **Authentication**: OAuth2, API keys, and JWT token management
+#### **"In Progress" Duration Tracking (NEW)**
+To address issues with tasks remaining "In Progress" for too long, a new tracking system has been implemented, deriving data directly from the Vercel Redis logs.
 
-## Project Context
+- **Accurate Duration Calculation**: The system now precisely calculates how long a task has been in its current "In Progress" state by parsing Redis logs for the most recent status change. This handles tasks that are moved in and out of progress, always reflecting the latest period.
+- **Color-Coded UI Indicators**: The duration is displayed throughout the UI with color-coding to quickly identify stale tasks:
+  - **Blue**: ≤ 3 days
+  - **Yellow**: 4-5 days
+  - **Red**: > 5 days
+- **Simplified Display**: The duration is shown in a human-readable format (e.g., "3 days" or "5 hours"), and hour estimates are now whole numbers (e.g., "8h").
+- **Admin Override**: Admins can manually correct the "In Progress Since" date via the task update modal. This action creates a `MANUAL UPDATE` entry in the logs, which takes precedence over all other entries for that task.
+- **LLM Report Integration**: The daily LLM report now uses this accurate, log-derived data to highlight stale tasks, improving the quality of the analysis.
 
-### Purpose
-The External Tracking System provides a centralized platform for monitoring and managing all external dependencies and integrations. It ensures reliability, performance optimization, and cost management of third-party services.
+#### **Task Creation & Update Functionality**
+- **Role-Based Interface**: Non-admins have a simplified task creation form, while admins have full control.
+- **Click-to-Edit Tasks**: Click any task name to open the update modal with pre-filled data.
+- **Parent Task Management**: Admins can change a task's parent, converting subtasks to parent tasks or vice versa.
 
-### Key Stakeholders
-- **Development Team**: Primary users for integration and debugging
-- **Operations Team**: Monitoring and incident response
-- **Product Management**: Usage analytics and cost optimization
-- **Security Team**: External service security and compliance
-
-### Technical Stack
-- **Backend**: [To be determined - Node.js/Python/Go]
-- **Database**: [To be determined - PostgreSQL/MongoDB]
-- **Message Queue**: [To be determined - Redis/RabbitMQ]
-- **Monitoring**: [To be determined - Prometheus/Datadog]
-- **Deployment**: Docker containers on cloud infrastructure
-- **Web Interface**: Next.js with TypeScript and Tailwind CSS (ClickUp integration)
-
-## Core Functionality
-
-### External Service Registry
-- Catalog of all external services and APIs
-- Service metadata and configuration
-- Authentication credentials management
-- Rate limit tracking
-
-### Monitoring and Health Checks
-- Periodic health checks for external services
-- Response time tracking
-- Error rate monitoring
-- Availability metrics
-
-### Usage Tracking
-- API call volume tracking
-- Cost estimation based on usage
-- Rate limit consumption monitoring
-- Historical usage trends
-
-### Alert System
-- Real-time alerts for service outages
-- Rate limit warnings
-- Cost threshold notifications
-- Performance degradation alerts
-
-## ClickUp Integration ✅ COMPLETED & ENHANCED (January 2025)
-
-The [`/web-app`](web-app/) directory contains a **fully operational** Next.js application that provides a modern, professional web interface for viewing ClickUp tasks and subtasks. This integration features a **completely redesigned UI** with modern design patterns and enhanced user experience.
-
-### 🎯 Features (All Implemented & Enhanced)
-- **✅ Modern Card-Based Interface**: Beautiful task cards with hover effects, shadows, and visual hierarchy
-- **✅ Comprehensive Stats Dashboard**: Real-time metrics with three key statistics:
-  - **Active Tasks**: Total count of all subtasks in the system
-  - **In Progress**: Count of subtasks currently being worked on with total hours
-  - **Developers**: Number of unique developers with total hours and week estimates
-- **✅ Task Organization by Status & Priority**: Three distinct sections for better task management:
-  - **In Progress Tasks by Developer**: Shows subtasks currently being worked on (filtered by status)
-  - **Urgent Priority Tasks by Developer**: Shows urgent subtasks not in progress (filtered by priority)
-  - **High Priority Tasks by Developer**: Shows high priority subtasks not in progress (filtered by priority)
-- **✅ Advanced Filtering System**: Quick filters, dropdown filters, and active filter management
-- **✅ Dual View Modes**: Toggle between modern cards and traditional table views
-- **✅ Responsive Design**: Perfect adaptation across mobile, tablet, and desktop
-- **✅ Smooth Animations**: Professional micro-interactions and page transitions
-- **✅ Real-time Data**: Live synchronization with ClickUp API with pagination support
-- **✅ Professional Loading States**: Skeleton screens with shimmer animations
-- **✅ Enhanced Typography**: Inter font with perfect hierarchy and spacing
-- **✅ Accessibility Compliant**: WCAG guidelines with proper focus management
-- **✅ Priority System**: Full support for all 5 priority levels (Urgent, High, Normal, Low, None)
-- **✅ Smart Hour Calculation**: Hours tracked from subtasks only, preventing double-counting
-- **✅ Task Update Modal**: Click any task to edit its details with pre-filled data
-- **✅ Change Tracking System**: All task operations logged to Vercel Redis for AI review
-- **✅ Admin Log Editor**: Web-based editor at `/logs` for admin users to view and edit task change logs
-- **✅ Parent Task Management**: Admin-only field to change task parent/subtask relationships
-- **✅ Role-Based Task Creation**: Different interfaces for admin vs non-admin users
-
-### 🎨 Latest Updates (January 2025)
-
-#### **Task Creation Functionality (ENHANCED January 2025)**
-- **Role-Based Interface**:
-  - **Non-Admin Users**:
-    - Simplified form with only "Item Name" and "Description" fields
-    - Button labeled "New Item" instead of "New Review Item"
-    - Tasks automatically created under "New" parent task
-    - No access to status, priority, due date, time estimate, or developer fields
-  - **Admin Users**:
-    - Full access to all form fields
-    - Button labeled "New Review Item"
-    - Can select any parent task from dropdown
-    - Complete control over all task properties
-- **Improved Logging**:
-  - No longer logs undefined values
-  - Tracks the specific username of the task creator (e.g., "Jacob").
-  - Cleaner, more readable log entries
-  > **IMPORTANT:** The creator's username is captured by storing it in `localStorage` (`trackingUser`) upon login and passing it from the client-side modal to the server-side creation API.
-
-#### **Task Update Functionality (ENHANCED January 2025)**
-- **Click-to-Edit Tasks**: Click on any task name across all sections to open the update modal
-  - Works in "In Progress Tasks by Developer" section
-  - Works in "Urgent Priority Tasks by Developer" section
-  - Works in "High Priority Tasks by Developer" section
-  - Works in main Tasks table (both card and table views)
-- **Update Modal Features**:
-  - Pre-fills all current task data from ClickUp
-  - All fields available: name, description, status, priority, due date, time estimate, developer, comments
-  - **Parent Task Field (NEW)**: Located at the top of the modal
-    - Admin-only editing (requires `sdf65e4wf6ae4rew3` code)
-    - Dropdown shows all available parent tasks
-    - Allows converting subtasks to parent tasks or vice versa
-    - Non-admin users see current parent info but cannot edit
-  - Only sends changed fields to API for efficiency
-  - Handles developer field stored as numeric orderindex
-  - Full field locking for non-admin users (except description)
-- **Change Tracking System (Vercel Redis)**:
-  - All CREATE and UPDATE operations logged to a durable Vercel Redis database.
-  - Solves rate limiting and race conditions present with blob storage.
-  - Separate databases for production, preview, and development environments.
-  - No caching - always fetches fresh data
-  - Format optimized for LLM readability with proper newline handling
-  - Includes timestamp, task ID, changed fields, and comments
-  - Admin log editor available at `/logs` for viewing and editing logs
-  - Example format:
-    ```markdown
-    ## UPDATE Task 86b6pf2an - 2025-01-15T23:00:00.000Z
-      - name: "Updated task name"
-      - status: "IN PROGRESS"
-    Comment: Updated via web interface
-    ```
-- **UI Improvements**:
-  - Fixed text overflow with proper truncation and ellipsis
-  - Removed redundant status badges from "In Progress" section
-  - Right-aligned status badges in priority sections
-  - Added tooltips for long task names
-- **Bug Fixes**:
-  - Fixed priority sections to filter by subtask priority (not parent)
-  - Fixed developer field display when stored as orderindex number
-  - Fixed Next.js 15 async params warning
-  - Fixed priority mapping to use correct ClickUp IDs
-
-#### **ClickUp API Enhancements**
-- **Pagination Support**: API now fetches ALL tasks using pagination (not limited to first 100)
-- **Priority Detection**: Enhanced to detect both built-in ClickUp priority fields and custom fields
-- **Task Hierarchy Understanding**:
-  - **Parent tasks are used only for grouping and organization**
-  - Subtasks are the actual work items that get displayed
-  - Each subtask shows as "Parent Task - Subtask Name" for context
-- **Hour Calculation Logic**:
-  - Hours are ONLY calculated from subtasks (parent tasks never contribute hours)
-  - Prevents double-counting when developers are assigned to both parent and subtasks
-  - Shows "(X subtasks)" indicator on parent tasks for clarity
-- **Status-Priority Separation**:
-  - Tasks in "In Progress" status are excluded from Priority sections
-  - Ensures no duplication between status-based and priority-based views
-
-#### **UI Enhancement Summary**
-A comprehensive UI overhaul was completed following modern design principles:
-
-#### **Design System Implementation**
-- **Modern Color Palette**: Professional blues, status colors, and neutral tones
-- **Typography System**: Inter font with consistent scale and hierarchy
-- **Component Library**: 20+ reusable UI components with variants
-- **Animation Framework**: Framer Motion integration for smooth interactions
-- **Design Tokens**: CSS custom properties for consistent theming
-
-#### **Key UI Components Created**
-- **Button Component**: 7 variants (primary, secondary, outline, ghost, success, warning, error)
-- **Card System**: Flexible cards with hover effects and multiple variants
-- **Badge Components**: Status and priority-specific styling with animations (supports all 5 priority levels)
-- **Avatar System**: User avatars with fallbacks and group support
-- **Progress Components**: Linear, circular, and multi-step progress indicators
-- **Skeleton Loaders**: Professional loading states matching final layout
-- **Animation Components**: Page transitions, stagger animations, and micro-interactions
-- **Task Organization Sections**: Three dedicated dashboard sections:
-  - In Progress Tasks by Developer (status-based filtering)
-  - Urgent Priority Tasks by Developer (excludes in-progress)
-  - High Priority Tasks by Developer (excludes in-progress)
-
-#### **Layout Enhancements**
-- **Modern Header**: Gradient background, search functionality, and action buttons
-- **Stats Dashboard**: Three key metrics cards:
-  - **Active Tasks**: Total subtask count (renamed from "Active Subtasks" for clarity)
-  - **In Progress**: Subtasks being worked on with hours
-  - **Developers**: Unique developer count with total hours and week estimates (hours ÷ 30)
-- **Task Sections by Developer**: Three distinct sections showing:
-  - **In Progress Tasks by Developer**: Subtasks with "in progress", "active", or "working" status
-  - **Urgent Priority Tasks by Developer**: Urgent priority subtasks (excluding those in progress)
-  - **High Priority Tasks by Developer**: High priority subtasks (excluding those in progress)
-- **Filter Bar**: Advanced filtering with quick access and active filter chips
-- **Task Cards**: Beautiful card-based layout with all 5 priority levels properly displayed
-- **Responsive Grid**: Adaptive layout (1 col mobile, 2 col tablet, 3-4 col desktop)
-
-### 🚀 Current Status
-- **LIVE**: Enhanced application running at http://localhost:3000
-- **MODERN UI**: Complete visual transformation with professional design
-- **RESPONSIVE**: Perfect adaptation across all device sizes
-- **PERFORMANT**: Optimized animations and efficient rendering
-- **ACCESSIBLE**: WCAG compliant with proper accessibility features
-
-### 📚 Libraries & Dependencies Added
-```json
-{
-  "framer-motion": "^11.x", // Smooth animations and micro-interactions
-  "class-variance-authority": "^0.7.x", // Component variant management
-  "clsx": "^2.x", // Conditional class names
-  "tailwind-merge": "^2.x", // Tailwind class merging
-  "lucide-react": "^0.536.x" // Modern icon library (already present)
-}
-```
-
-### 🛠️ Technical Architecture
-
-#### **Component Structure**
-```
-/src/components/
-├── ui/                    # Core UI component library
-│   ├── Button.tsx         # Multi-variant button component
-│   ├── Card.tsx          # Flexible card system
-│   ├── Badge.tsx         # Status and priority badges
-│   ├── Avatar.tsx        # User avatar system
-│   ├── Progress.tsx      # Progress indicators
-│   ├── Skeleton.tsx      # Loading state components
-│   └── index.ts          # Component exports
-├── layout/               # Layout-specific components
-│   ├── Header.tsx        # Modern header with search
-│   ├── StatsBar.tsx      # Metrics dashboard
-│   └── FilterBar.tsx     # Advanced filtering
-├── task/                 # Task-specific components
-│   └── TaskCard.tsx      # Modern task card layout
-├── animations/           # Animation utilities
-│   └── PageTransition.tsx # Framer Motion wrappers
-└── [existing components] # Enhanced existing components
-```
-
-#### **Design System Files**
-- **`/src/app/globals.css`**: Comprehensive design tokens and CSS variables
-- **`/src/lib/utils.ts`**: Utility functions for styling and formatting
-- **Tailwind CSS v4**: Modern CSS-in-JS configuration with design tokens
-
-### 🎯 Future UI Updates Guide
-
-#### **Adding New Components**
-1. Create component in appropriate `/src/components/` subdirectory
-2. Use `class-variance-authority` for variant management
-3. Follow established design token patterns from `globals.css`
-4. Add to `/src/components/ui/index.ts` for easy imports
-
-#### **Modifying Design Tokens**
-- **Colors**: Update CSS variables in `globals.css` under `@theme` section
-- **Typography**: Modify font scales and weights in design tokens
-- **Spacing**: Adjust spacing system using `--spacing-unit` multipliers
-- **Animations**: Update duration and easing values in CSS variables
-
-#### **Animation Guidelines**
-- Use Framer Motion components from `/src/components/animations/`
-- Follow established animation patterns (fade-in, slide-up, stagger)
-- Maintain 60fps performance with proper easing curves
-- Test animations across all device sizes
-
-#### **Responsive Design**
-- **Breakpoints**: Mobile (375px), Tablet (768px), Desktop (1280px+)
-- **Grid System**: Use established responsive grid patterns
-- **Touch Targets**: Minimum 44px for mobile interactions
-- **Typography**: Scale appropriately across breakpoints
+#### **Technical Enhancements**
+- **Vercel Redis for Logging**: All CREATE, UPDATE, and MANUAL UPDATE operations are logged to a durable Vercel Redis database, solving previous rate limiting and race condition issues.
+- **Robust Log Parsing**: The log parser now correctly handles `CREATE`, `UPDATE`, and `MANUAL UPDATE` events, ensuring that tasks set to "In Progress" upon creation are tracked correctly.
+- **Direct Log Access**: The application now reads logs directly from the source (`getAllLogs`) instead of relying on an internal API fetch, improving reliability in the deployed Vercel environment.
 
 ### Quick Start
 ```bash
 cd web-app
-npm install  # Installs all new UI dependencies
+npm install
 cp .env.local.example .env.local
 # Edit .env.local with your ClickUp API credentials
 # To connect to the Vercel Redis log store locally, run:
 # vercel env pull .env.development.local
 npm run dev
-# Visit http://localhost:3000 to view the enhanced interface
+# Visit http://localhost:3000
 ```
 
 ### 🔧 Technical Implementation
 - **Framework**: Next.js 15 with TypeScript and Tailwind CSS v4
-- **UI Library**: Custom component library with 20+ components
-- **Animations**: Framer Motion for smooth interactions
-- **Styling**: CSS-in-JS with design tokens and custom properties
-- **Type Safety**: Full TypeScript definitions with proper component props
-- **Performance**: Optimized animations and efficient re-rendering
-- **Accessibility**: WCAG compliant with proper ARIA labels and focus management
+- **UI Library**: Custom component library with Framer Motion for animations.
+- **Logging**: Vercel Redis for durable, high-performance logging.
 
 ### Deployment
-
-#### Vercel Auto-Deployment ✅ WORKING
-The web application is **successfully configured** for automatic deployment to Vercel when changes are pushed to the `main` branch on GitHub. The deployment handles the subdirectory structure with the Next.js app located in `/web-app`.
-
-**Working Configuration:**
-The deployment now works with the following setup:
-1. **Root Directory**: Set to `web-app` in Vercel project settings
-2. **Framework Detection**: Explicitly configured as Next.js in [`web-app/vercel.json`](web-app/vercel.json)
-3. **Build Configuration**: Optimized for subdirectory deployment
-
-**Auto-Deploy Process:**
-- ✅ Push to `main` branch → Automatic Vercel deployment
-- ✅ Root directory: `web-app` (configured in Vercel project settings)
-- ✅ Framework: `nextjs` (explicitly specified in vercel.json)
-- ✅ Build command: `npm run build`
-- ✅ Install command: `npm install`
-- ✅ Output directory: `.next`
-- ✅ API routes: Configured with 30-second timeout for ClickUp API calls
-
-**Final Configuration Files:**
-- **[`web-app/vercel.json`](web-app/vercel.json)**: Contains framework specification and function timeouts
-- **Vercel Project Settings**: Root Directory set to `web-app`
-
-#### Manual Deployment
-For manual deployments or testing:
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy from web-app directory
-cd web-app
-vercel --prod
-```
-
-#### Environment Variables
-Set the following environment variables in your Vercel dashboard:
-- `CLICKUP_API_TOKEN`: Your ClickUp API token
-- `CLICKUP_TEAM_ID`: Your ClickUp team/workspace ID
-- Vercel Redis Environment Variables (`REDIS_URL`, etc.): Auto-configured when you connect a Vercel Redis database to your project.
-
-#### Troubleshooting Notes
-If you encounter deployment issues in the future:
-1. Ensure Root Directory is set to `web-app` in Vercel project settings
-2. Verify [`web-app/vercel.json`](web-app/vercel.json) contains `"framework": "nextjs"`
-3. Check that all environment variables are properly configured
-4. The routes-manifest.json error was resolved by explicit framework configuration
-
-#### Vercel Redis Integration (September 2025)
-The application now uses **Vercel Redis** for persistent task change logging, replacing the previous Vercel Blob solution to solve rate limiting and race condition issues.
-- **Durable & Fast**: Uses a durable Redis store for atomic and rapid log appends.
-- **Environment Isolation**: Uses separate Redis keys for production, preview, and development environments.
-- **Local Development**: Falls back to a local file (`/logs/task-changes.md`) if no Redis environment variables are present, ensuring full offline support.
-- **Admin Log Editor**: The editor at `/logs` is fully compatible with the new Redis backend.
-
-The enhanced web app is **production-ready** with optimized build configuration, environment variable management for ClickUp API credentials, and persistent logging via Vercel Redis.
-
-For detailed setup instructions, see [`/web-app/README.md`](web-app/README.md).
+The web application is configured for automatic deployment to Vercel when changes are pushed to the `main` branch. The Vercel project's **Root Directory** is set to `web-app`.
 
 ## Contributing
-
-1. **Read the Standards**: Review [`/docs/SOPs/Coding-Standards.md`](docs/SOPs/Coding-Standards.md)
-2. **Create Feature Branch**: `git checkout -b feature/your-feature-name`
-3. **Follow Documentation**: Use templates in [`/docs`](docs/) for any new documentation
-4. **Test Your Changes**: Ensure all tests pass before submitting
-5. **Submit Pull Request**: Include clear description and reference any related issues
-
-## Support and Resources
-
-### Internal Documentation
-- **System Overview**: [`/docs/System/Overview.md`](docs/System/Overview.md)
-- **Coding Standards**: [`/docs/SOPs/Coding-Standards.md`](docs/SOPs/Coding-Standards.md)
-- **Project Archive**: [`/docs/Project/Archive/`](docs/Project/Archive/)
-
-### External Resources
-- [Git Best Practices](https://git-scm.com/book)
-- [Mermaid Documentation](https://mermaid.js.org/)
-- [Markdown Guide](https://www.markdownguide.org/)
+1.  **Read the Standards**: Review [`/docs/SOPs/Coding-Standards.md`](docs/SOPs/Coding-Standards.md).
+2.  **Create Feature Branch**: `git checkout -b feature/your-feature-name`.
+3.  **Test Your Changes** and submit a Pull Request.
 
 ---
-
 **Note**: This README serves as the primary entry point for both developers and AI tools. Keep it concise (≤500 lines) and always reference the [`/docs`](docs/) folder for detailed information.
